@@ -1,0 +1,33 @@
+# --- Session / handoff (local only) ---
+.claude/handoffs/
+
+# --- OS ---
+.DS_Store
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.env
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# --- Node / TS ---
+node_modules/
+ts/dist/
+*.tsbuildinfo
+.turbo/
+npm-debug.log*
+pnpm-debug.log*
+
+# --- Editors ---
+.idea/
+*.swp
