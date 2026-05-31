@@ -1,33 +1,120 @@
-# --- Session / handoff (local only) ---
 .claude/handoffs/
+.claude/scratch/
 
-# --- OS ---
-.DS_Store
-
-# --- Python ---
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
-*.egg-info/
-.eggs/
+*$py.class
+
+
+.DS_Store
+# C extensions
+*.so
+
+# TLS certificates
+## Ignore all PEM files anywhere
+*.pem
+## Also ignore any certs directory
+certs/
+
+# Distribution / packaging
+.Python
 build/
+develop-eggs/
 dist/
-.venv/
-venv/
-.env
-.pytest_cache/
-.ruff_cache/
-.mypy_cache/
-.coverage
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+_build
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
 htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
 
-# --- Node / TS ---
-node_modules/
-ts/dist/
-*.tsbuildinfo
-.turbo/
-npm-debug.log*
-pnpm-debug.log*
+# Translations
+*.mo
+*.pot
 
-# --- Editors ---
-.idea/
-*.swp
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+docs/*
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# celery beat schedule file
+celerybeat-schedule
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+
+# PyCharm
+.idea

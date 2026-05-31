@@ -110,15 +110,46 @@ publishes into while remaining compatible with the acture tie.
 
 ---
 
-## D6. Flat package layout, `py/` + `ts/` split — **[call]**
+## D6. Layout = wads current defaults (Python `name/name/` at root); frontend CI deferred — **[call]**
 
-**Brief proposed:** `py/src/walkthru/…`.
+**Brief proposed:** `py/src/walkthru/…`. An earlier draft of this doc used a `py/` + `ts/`
+split. Both are superseded.
 
-**Decision:** flat layout — `py/walkthru/…` (package dir at the `py/` root, no `src/`) —
-matching `dol`/`nw`/`reelee` (hatchling, flat, `requires-python >= 3.10`, ruff with `D100`
-module-docstring enforcement, wads uv-CI). The `py/` + `ts/` top-level split hosts both
-languages in one repo as the brief intends; the JSON Demo Document is the only thing that
-crosses between them.
+**Decision:** Use **wads current defaults**. The Python package sits at the **repo root** in the
+`name/name/` form — `walkthru/walkthru/` — exactly what `wads populate` produces (hatchling,
+`requires-python >= 3.10`, MIT, ruff `D100`, `tests/`, `[tool.wads.ci.*]` SSOT, the 5-line
+`.github/workflows/ci.yml` uv stub, plus the wads `.gitignore`/`.gitattributes`/`.editorconfig`).
+The TypeScript side lives in a sibling **`ts/`** subdir as a **single** npm package
+(`acture-walkthru`).
+
+**What justified it (and the constraint):** the user maintains ~200 repos in the `name/name`
+form and wants the Python convention left untouched. wads already models the frontend as a
+*separate, additive* overlay (`profiles.py` / `npm_config.py` + a path-filtered workflow), so
+supporting a TS frontend alongside the unchanged Python layout costs nothing. Confirmed by
+reading wads: `populate` (Python) and `apply_npm_overlay` (frontend) are independent code paths.
+
+**Frontend CI deferred — coordination, not indecision.** wads' frontend overlay is brand-new and
+unused (zodal was set up independently/earlier), so its defaults can change freely. We filed
+**i2mint/wads#39** to generalize the single npm overlay into a **js/ts language-profile
+registry** (extensible, with a monorepo seam), to be built in a separate session. To avoid the
+two sessions colliding, walkthru:
+
+- ships the **Python side on wads current defaults now** (this commit), with a **Python-only**
+  `ci.yml`; and
+- **defers `ts/` scaffolding + `npm-ci.yml`** until the wads `ts` profile lands, then generates
+  them via `wads --frontend ts`.
+
+**Single TS package, not a monorepo (for MVP).** `acture`/`zodal` are pnpm+turbo monorepos, but
+walkthru's MVP needs only one publishable package. The core/adapter firewall is enforced
+*within* one package (subpath exports + an import-boundary lint such as dependency-cruiser +
+optional peer deps) — separate packages would be premature. The wads single-package overlay
+fits; we graduate to the `ts-monorepo` profile (reserved in #39) only if adapters ever need
+independent versioning.
+
+**Pre-release CI toggles.** Because there is no release artifact, generated docs, or metrics
+history yet, `[tool.wads.ci].publish/docs/metrics` are set to `enabled = false` (testing +
+ruff stay on so CI gives real signal). Flip `publish` on at the first release; `docs` on once
+docs exist. This is a phase toggle, not a convention change.
 
 ---
 

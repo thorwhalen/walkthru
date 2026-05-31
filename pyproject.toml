@@ -1,0 +1,91 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "walkthru"
+version = "0.0.1"
+description = "Turn a sequence of app commands into an editable, re-renderable demo/tour artifact."
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["demo", "tour", "walkthrough", "screencast", "automation", "annotation"]
+authors = []
+dependencies = []
+
+[project.license]
+text = "MIT"
+
+[project.urls]
+Homepage = "https://github.com/thorwhalen/walkthru"
+
+[project.optional-dependencies]
+testing = []
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+exclude = [
+    "**/*.ipynb",
+    ".git",
+    ".venv",
+    "build",
+    "dist",
+    "tests",
+    "examples",
+    "scrap",
+]
+
+[tool.ruff.lint]
+select = ["D100"]
+ignore = ["D203", "E501", "B905"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/*" = ["D"]
+"**/examples/*" = ["D"]
+"**/scrap/*" = ["D"]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+testpaths = ["tests"]
+doctest_optionflags = ["NORMALIZE_WHITESPACE", "ELLIPSIS"]
+
+# ============================================================================
+# CI Configuration (Single Source of Truth) — read by the reusable uv-ci
+# workflow. See i2mint/wads. The frontend (npm/ts) CI is intentionally NOT
+# set up yet — it is deferred until i2mint/wads#39 (language-profile registry)
+# lands, then walkthru adopts the resulting `ts` profile. See DECISIONS.md §D6.
+# ============================================================================
+[tool.wads.ci]
+project_name = "walkthru"
+
+[tool.wads.ci.quality.ruff]
+enabled = true
+
+[tool.wads.ci.testing]
+enabled = true
+python_versions = ["3.10", "3.12"]
+pytest_args = ["-v", "--tb=short"]
+coverage_enabled = true
+coverage_threshold = 0
+
+[tool.wads.ci.build]
+sdist = true
+wheel = true
+
+# Publish / docs / metrics stay OFF during the planning / pre-release phase
+# (no release artifact, generated docs, or metrics history yet). Flip
+# publish -> true at the first real release; docs -> true once docs exist.
+[tool.wads.ci.publish]
+enabled = false
+skip_ci_marker = "[skip ci]"
+publish_marker = "[publish]"
+
+[tool.wads.ci.docs]
+enabled = false
+builder = "epythet"
+
+[tool.wads.ci.metrics]
+enabled = false
