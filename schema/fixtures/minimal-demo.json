@@ -1,0 +1,50 @@
+{
+  "id": "demo-minimal",
+  "meta": {
+    "title": null,
+    "description": null,
+    "schemaVersion": "0.1.0"
+  },
+  "sections": [
+    {
+      "id": "s1",
+      "title": null,
+      "steps": [
+        {
+          "kind": "command",
+          "id": "step-1",
+          "command": {
+            "id": "app.open",
+            "params": null
+          },
+          "timing": {
+            "durationMs": 500,
+            "holdAfterMs": null
+          },
+          "next": null
+        },
+        {
+          "kind": "command",
+          "id": "step-2",
+          "command": {
+            "id": "app.click",
+            "params": {
+              "x": 1,
+              "y": 2
+            }
+          },
+          "timing": {
+            "durationMs": 800,
+            "holdAfterMs": 200
+          },
+          "next": null
+        }
+      ]
+    }
+  ],
+  "tracks": {
+    "cues": [],
+    "narration": [],
+    "camera": []
+  }
+}

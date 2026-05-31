@@ -163,6 +163,50 @@ round-trip come for free. The `core` remains pure — schema validation is side-
 
 ---
 
+## D8. Anchor is the single SSOT for cue/narration → step association — **[call]**
+
+**Brief listed** `cueRefs?` and `narrationRef?` on `CommandStep`, *and* anchors on the cue and
+narration tracks — i.e. the association stored in two places.
+
+**Decision:** Drop the step-side `cueRefs`/`narrationRef`. The **track item's `anchor`**
+(`{stepId, localOffsetMs[, durationMs]}`) is the *only* place a cue/narration is tied to a step.
+The engine resolves "what fires at this step" by filtering the tracks on `anchor.stepId`
+(`_cues_for` / `_narration_for`).
+
+**Why:** storing the same association on both the step and the track item is a dual-source-of-truth
+that drifts on every edit (the user's SSOT principle, and Report 02's "wrong abstraction"
+warning). The anchor is also strictly richer — it carries `localOffset` (and `duration` for
+narration) that a bare id reference cannot — so it must exist regardless; the step-side ref is pure
+redundancy. Finding a step's cues is an O(n) track scan, which is irrelevant at demo sizes. If a
+real need for fast reverse lookup ever appears, it is a derived index, not new SSOT.
+
+---
+
+## D9. Lifecycle protocol realized as a typed event stream, not named hooks — **[deviation]**
+
+**Brief/Report 02 §B.1** describe the lifecycle as an `Observer` object with named methods
+(`onStepEnter`, `beforeCommand`, `onCueBegin`, …).
+
+**Decision:** Realize it as a stream of **typed event dataclasses** (`StepEnter`, `BeforeCommand`,
+`CueBegin`, …) consumed by observer **callables** (`Observer = Callable[[Event], Awaitable|None]`).
+Each event type maps 1:1 to a brief hook name, so nothing is lost; the canonical walk is the async
+generator `iter_events(document, executor)`, and `play()` is a thin driver that fans events to
+observers.
+
+**Why:** it matches Thor's functional-over-OOP convention and the iterables guidance (a lazy
+`yield`-based stream rather than an object with 13 optional override points). Composition is
+trivial (an observer is just a function; filtering by `isinstance` selects the events you care
+about), and the same event vocabulary serves both `play` (generative) and `record` (capture) —
+the "one lifecycle protocol, driver inverted" the brief wants. A named-hook adapter can be layered
+on later for anyone who prefers it (progressive disclosure), but it is not the core mechanism.
+
+**Async core — [call].** The engine and ports are `async` because the real executors (acture
+dispatch, Playwright) and recorders do I/O. The pure-core tests need no async plugin — they use
+`asyncio.run` over fakes. `executor` and observers may be sync *or* async; the engine awaits
+whatever is awaitable (`_maybe_await`).
+
+---
+
 ## Open judgment calls deferred to issues (not yet decided)
 
 - Whether `play()` needs a **Python mirror** for MVP or whether TS-only suffices until render.

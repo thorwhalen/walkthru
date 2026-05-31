@@ -1,0 +1,1167 @@
+{
+  "$defs": {
+    "Anchor": {
+      "additionalProperties": false,
+      "description": "A point on a step's local timeline: ``(stepId, localOffsetMs)``.",
+      "properties": {
+        "stepId": {
+          "title": "Stepid",
+          "type": "string"
+        },
+        "localOffsetMs": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Localoffsetms",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "stepId"
+      ],
+      "title": "Anchor",
+      "type": "object"
+    },
+    "AssetRef": {
+      "additionalProperties": false,
+      "description": "A reference to an external media asset (audio/video/image).",
+      "properties": {
+        "uri": {
+          "title": "Uri",
+          "type": "string"
+        },
+        "mime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mime"
+        }
+      },
+      "required": [
+        "uri"
+      ],
+      "title": "AssetRef",
+      "type": "object"
+    },
+    "Beat": {
+      "additionalProperties": false,
+      "description": "A non-command step: a pure pause, a title/text card, or a B-roll insert.",
+      "properties": {
+        "kind": {
+          "const": "beat",
+          "default": "beat",
+          "title": "Kind",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "beatKind": {
+          "enum": [
+            "pause",
+            "textCard",
+            "broll"
+          ],
+          "title": "Beatkind",
+          "type": "string"
+        },
+        "timing": {
+          "$ref": "#/$defs/Timing"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Text"
+        }
+      },
+      "required": [
+        "id",
+        "beatKind",
+        "timing"
+      ],
+      "title": "Beat",
+      "type": "object"
+    },
+    "CalloutCue": {
+      "additionalProperties": false,
+      "description": "A tooltip/callout with text, optionally with an arrow toward the target.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "anchor": {
+          "$ref": "#/$defs/Anchor"
+        },
+        "durationMs": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Durationms"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Target"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "type": {
+          "const": "callout",
+          "default": "callout",
+          "title": "Type",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "placement": {
+          "anyOf": [
+            {
+              "enum": [
+                "top",
+                "bottom",
+                "left",
+                "right",
+                "auto"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Placement"
+        },
+        "arrow": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Arrow"
+        }
+      },
+      "required": [
+        "id",
+        "anchor",
+        "text"
+      ],
+      "title": "CalloutCue",
+      "type": "object"
+    },
+    "CameraKeyframe": {
+      "additionalProperties": false,
+      "description": "A camera state (focus rect + zoom) anchored to a point in time.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "anchor": {
+          "$ref": "#/$defs/Anchor"
+        },
+        "focus": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Rect"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "zoom": {
+          "default": 1.0,
+          "title": "Zoom",
+          "type": "number"
+        },
+        "easing": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Easing"
+        },
+        "holdMs": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Holdms"
+        }
+      },
+      "required": [
+        "id",
+        "anchor"
+      ],
+      "title": "CameraKeyframe",
+      "type": "object"
+    },
+    "Command": {
+      "additionalProperties": false,
+      "description": "A vendor-neutral command: ``{id, params}``.\n\nMirrors the ecosystem command shape (acture's ``SequenceStep {commandId, params}``) but stays\nneutral \u2014 the ``id <-> commandId`` translation lives in the acture adapter, not here.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "params": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Params"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "Command",
+      "type": "object"
+    },
+    "CommandStep": {
+      "additionalProperties": false,
+      "description": "A step that runs one command.",
+      "properties": {
+        "kind": {
+          "const": "command",
+          "default": "command",
+          "title": "Kind",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "command": {
+          "$ref": "#/$defs/Command"
+        },
+        "timing": {
+          "$ref": "#/$defs/Timing"
+        },
+        "next": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next"
+        }
+      },
+      "required": [
+        "id",
+        "command",
+        "timing"
+      ],
+      "title": "CommandStep",
+      "type": "object"
+    },
+    "CursorCue": {
+      "additionalProperties": false,
+      "description": "A synthetic cursor move, optionally ending in a click.\n\n``target`` (inherited) is the destination; ``fromTarget`` is the optional origin.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "anchor": {
+          "$ref": "#/$defs/Anchor"
+        },
+        "durationMs": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Durationms"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Target"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "type": {
+          "const": "cursor",
+          "default": "cursor",
+          "title": "Type",
+          "type": "string"
+        },
+        "fromTarget": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Target"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "click": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Click"
+        },
+        "easing": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Easing"
+        }
+      },
+      "required": [
+        "id",
+        "anchor"
+      ],
+      "title": "CursorCue",
+      "type": "object"
+    },
+    "HighlightCue": {
+      "additionalProperties": false,
+      "description": "A ring/outline drawn around the target element.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "anchor": {
+          "$ref": "#/$defs/Anchor"
+        },
+        "durationMs": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Durationms"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Target"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "type": {
+          "const": "highlight",
+          "default": "highlight",
+          "title": "Type",
+          "type": "string"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Color"
+        },
+        "thickness": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Thickness"
+        },
+        "padding": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Padding"
+        },
+        "shape": {
+          "anyOf": [
+            {
+              "enum": [
+                "rect",
+                "circle"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Shape"
+        }
+      },
+      "required": [
+        "id",
+        "anchor"
+      ],
+      "title": "HighlightCue",
+      "type": "object"
+    },
+    "HotspotCue": {
+      "additionalProperties": false,
+      "description": "A pulsing marker inviting interaction at the target.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "anchor": {
+          "$ref": "#/$defs/Anchor"
+        },
+        "durationMs": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Durationms"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Target"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "type": {
+          "const": "hotspot",
+          "default": "hotspot",
+          "title": "Type",
+          "type": "string"
+        },
+        "pulse": {
+          "anyOf": [
+            {
+              "enum": [
+                "none",
+                "pulse",
+                "double"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pulse"
+        },
+        "size": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Size"
+        }
+      },
+      "required": [
+        "id",
+        "anchor"
+      ],
+      "title": "HotspotCue",
+      "type": "object"
+    },
+    "Locator": {
+      "additionalProperties": false,
+      "description": "A single way to find an element. Prefer role/test-id over brittle CSS/XPath.",
+      "properties": {
+        "strategy": {
+          "enum": [
+            "role",
+            "testid",
+            "text",
+            "label",
+            "css",
+            "xpath"
+          ],
+          "title": "Strategy",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "string"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        }
+      },
+      "required": [
+        "strategy",
+        "value"
+      ],
+      "title": "Locator",
+      "type": "object"
+    },
+    "Meta": {
+      "additionalProperties": false,
+      "description": "Document metadata.",
+      "properties": {
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "schemaVersion": {
+          "default": "0.1.0",
+          "title": "Schemaversion",
+          "type": "string"
+        }
+      },
+      "title": "Meta",
+      "type": "object"
+    },
+    "NarrationAnchor": {
+      "additionalProperties": false,
+      "description": "An anchored *span* (a narration segment plays for ``durationMs``).",
+      "properties": {
+        "stepId": {
+          "title": "Stepid",
+          "type": "string"
+        },
+        "localOffsetMs": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Localoffsetms",
+          "type": "integer"
+        },
+        "durationMs": {
+          "minimum": 0,
+          "title": "Durationms",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "stepId",
+        "durationMs"
+      ],
+      "title": "NarrationAnchor",
+      "type": "object"
+    },
+    "NarrationSegment": {
+      "additionalProperties": false,
+      "description": "Timed, editable narration. ``text`` is the source of truth; ``audioRef`` is regenerable.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "anchor": {
+          "$ref": "#/$defs/NarrationAnchor"
+        },
+        "audioRef": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AssetRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tts": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TTS"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "wordTimings": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/WordTiming"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Wordtimings"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "anchor"
+      ],
+      "title": "NarrationSegment",
+      "type": "object"
+    },
+    "Rect": {
+      "additionalProperties": false,
+      "description": "An axis-aligned rectangle in CSS pixels (viewport coordinates).",
+      "properties": {
+        "x": {
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "title": "Y",
+          "type": "number"
+        },
+        "width": {
+          "title": "Width",
+          "type": "number"
+        },
+        "height": {
+          "title": "Height",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "title": "Rect",
+      "type": "object"
+    },
+    "ScrollAnchor": {
+      "additionalProperties": false,
+      "description": "How to re-find a target after the scroll position changes (Report 02 \u00a7A.4).",
+      "properties": {
+        "locator": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "fraction": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fraction"
+        }
+      },
+      "title": "ScrollAnchor",
+      "type": "object"
+    },
+    "Section": {
+      "additionalProperties": false,
+      "description": "An ordered group of steps.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "steps": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "beat": "#/$defs/Beat",
+                "command": "#/$defs/CommandStep"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/CommandStep"
+              },
+              {
+                "$ref": "#/$defs/Beat"
+              }
+            ]
+          },
+          "title": "Steps",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "steps"
+      ],
+      "title": "Section",
+      "type": "object"
+    },
+    "SpotlightCue": {
+      "additionalProperties": false,
+      "description": "A dim surround with a cut-out over the target (focus the viewer).",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "anchor": {
+          "$ref": "#/$defs/Anchor"
+        },
+        "durationMs": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Durationms"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Target"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "type": {
+          "const": "spotlight",
+          "default": "spotlight",
+          "title": "Type",
+          "type": "string"
+        },
+        "opacity": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Opacity"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Color"
+        },
+        "feather": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Feather"
+        }
+      },
+      "required": [
+        "id",
+        "anchor"
+      ],
+      "title": "SpotlightCue",
+      "type": "object"
+    },
+    "TTS": {
+      "additionalProperties": false,
+      "description": "Synthesis parameters; editing ``NarrationSegment.text`` invalidates rendered audio.",
+      "properties": {
+        "engine": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Engine"
+        },
+        "voice": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Voice"
+        },
+        "rate": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rate"
+        },
+        "ssml": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ssml"
+        }
+      },
+      "title": "TTS",
+      "type": "object"
+    },
+    "Target": {
+      "additionalProperties": false,
+      "description": "A resilient, prioritized locator: try ``primary``, then ``fallbacks`` in order.\n\n``bbox`` is a last-resort geometry captured at record time; ``scrollAnchor`` lets a cue be\nre-anchored after scrolling. Self-healing (re-resolving a drifted target) must be surfaced as\na human-reviewable suggestion, never a silent rewrite of this SSOT.",
+      "properties": {
+        "primary": {
+          "$ref": "#/$defs/Locator"
+        },
+        "fallbacks": {
+          "items": {
+            "$ref": "#/$defs/Locator"
+          },
+          "title": "Fallbacks",
+          "type": "array"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Rect"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "scrollAnchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScrollAnchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "primary"
+      ],
+      "title": "Target",
+      "type": "object"
+    },
+    "Timing": {
+      "additionalProperties": false,
+      "description": "Local duration of a step, in milliseconds, plus an optional trailing hold.",
+      "properties": {
+        "durationMs": {
+          "minimum": 0,
+          "title": "Durationms",
+          "type": "integer"
+        },
+        "holdAfterMs": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Holdafterms"
+        }
+      },
+      "required": [
+        "durationMs"
+      ],
+      "title": "Timing",
+      "type": "object"
+    },
+    "Tracks": {
+      "additionalProperties": false,
+      "description": "Parallel annotation tracks, associated to steps by anchor.",
+      "properties": {
+        "cues": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "callout": "#/$defs/CalloutCue",
+                "cursor": "#/$defs/CursorCue",
+                "highlight": "#/$defs/HighlightCue",
+                "hotspot": "#/$defs/HotspotCue",
+                "spotlight": "#/$defs/SpotlightCue"
+              },
+              "propertyName": "type"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/HighlightCue"
+              },
+              {
+                "$ref": "#/$defs/SpotlightCue"
+              },
+              {
+                "$ref": "#/$defs/HotspotCue"
+              },
+              {
+                "$ref": "#/$defs/CalloutCue"
+              },
+              {
+                "$ref": "#/$defs/CursorCue"
+              }
+            ]
+          },
+          "title": "Cues",
+          "type": "array"
+        },
+        "narration": {
+          "items": {
+            "$ref": "#/$defs/NarrationSegment"
+          },
+          "title": "Narration",
+          "type": "array"
+        },
+        "camera": {
+          "items": {
+            "$ref": "#/$defs/CameraKeyframe"
+          },
+          "title": "Camera",
+          "type": "array"
+        }
+      },
+      "title": "Tracks",
+      "type": "object"
+    },
+    "WordTiming": {
+      "additionalProperties": false,
+      "description": "A single word aligned to a media offset (from STT or TTS marks).",
+      "properties": {
+        "word": {
+          "title": "Word",
+          "type": "string"
+        },
+        "tMs": {
+          "minimum": 0,
+          "title": "Tms",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "word",
+        "tMs"
+      ],
+      "title": "WordTiming",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The editable, re-renderable demo/tour artifact \u2014 walkthru's whole representation.",
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "meta": {
+      "$ref": "#/$defs/Meta"
+    },
+    "sections": {
+      "items": {
+        "$ref": "#/$defs/Section"
+      },
+      "title": "Sections",
+      "type": "array"
+    },
+    "tracks": {
+      "$ref": "#/$defs/Tracks"
+    }
+  },
+  "required": [
+    "id",
+    "sections"
+  ],
+  "title": "DemoDocument",
+  "type": "object"
+}

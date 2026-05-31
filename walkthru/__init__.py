@@ -12,6 +12,89 @@ and the underlying command stream into the same document).
 See ``PLAN.md``, ``DECISIONS.md``, and the repository's enhancement issues for the design and
 its running development journal. This package currently holds the Python side (schema SSOT +
 core + render hand-off); the live capture/play engine ships separately as ``acture-walkthru``.
+
+Quickstart::
+
+    import asyncio
+    from walkthru import DemoDocument, Section, CommandStep, Command, Timing, play
+
+    doc = DemoDocument(
+        id="demo",
+        sections=[Section(id="s1", steps=[
+            CommandStep(id="step-1", command=Command(id="app.open"), timing=Timing(duration_ms=500)),
+        ])],
+    )
+
+    async def executor(command):
+        print("run", command.id)
+        return {"ok": True}
+
+    asyncio.run(play(doc, executor))
 """
 
+from walkthru.core import (  # noqa: F401
+    Anchor,
+    AssetRef,
+    Beat,
+    CalloutCue,
+    Command,
+    CommandInvocation,
+    CommandStep,
+    Cue,
+    CursorCue,
+    DemoDocument,
+    Event,
+    HighlightCue,
+    HotspotCue,
+    Locator,
+    Meta,
+    NarrationSegment,
+    Observer,
+    Outcome,
+    Rect,
+    Section,
+    SpotlightCue,
+    Step,
+    Target,
+    Timing,
+    Tracks,
+    demo_document_json_schema,
+    iter_events,
+    play,
+    record,
+)
+
 __version__ = "0.0.1"
+
+__all__ = [
+    "__version__",
+    "play",
+    "record",
+    "iter_events",
+    "demo_document_json_schema",
+    "DemoDocument",
+    "Meta",
+    "Section",
+    "Step",
+    "CommandStep",
+    "Beat",
+    "Command",
+    "Timing",
+    "Anchor",
+    "Target",
+    "Locator",
+    "Rect",
+    "Tracks",
+    "Cue",
+    "HighlightCue",
+    "SpotlightCue",
+    "HotspotCue",
+    "CalloutCue",
+    "CursorCue",
+    "NarrationSegment",
+    "AssetRef",
+    "Event",
+    "Observer",
+    "Outcome",
+    "CommandInvocation",
+]

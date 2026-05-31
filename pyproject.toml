@@ -10,7 +10,10 @@ readme = "README.md"
 requires-python = ">=3.10"
 keywords = ["demo", "tour", "walkthrough", "screencast", "automation", "annotation"]
 authors = []
-dependencies = []
+# The pure core depends only on Pydantic (the schema SSOT). Vendor/ecosystem
+# integrations (Playwright, OBS, WhisperX, Piper, acture, reelee) are optional
+# extras behind the ports firewall — never hard dependencies of the core.
+dependencies = ["pydantic>=2"]
 
 [project.license]
 text = "MIT"
