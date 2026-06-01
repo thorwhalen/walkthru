@@ -60,6 +60,19 @@ This decision follows that instruction.
 **Unchanged:** the boundary principle (we own representation, the renderer owns pixels; hand off
 validated JSON; the renderer may ignore what it doesn't understand) holds exactly as written.
 
+**Resolved (was an open question): feed `PanelView`s, don't rebuild a `reelee.Project`.** Issue #3
+left open whether the adapter constructs a `reelee.Project` graph or feeds panels directly.
+`render_kenburns_video(project, …)` immediately calls `collect_panel_views(project)` — it
+re-derives panels from an `nw`/`lacing`/falaw annotation + content-addressed-artifact graph.
+Reconstructing that graph from a `DemoDocument` would bleed reelee's whole internal model across
+the firewall, only for reelee to throw our panels away and rebuild its own. So
+`walkthru.ecosystem.reelee` maps the resolved `Timeline` **directly** to `list[PanelView]` and
+drives the film with the *same lower-level primitives* `render_kenburns_video` uses internally
+(`burns.ken_burns_path` + an injectable `film_renderer`, default
+`reelee.kenburns_video.default_film_renderer`). Per-panel screen time comes from the **walkthru
+timeline** (the SSOT already composes it), not reelee's shot-timing strategies. The step-level
+`poster` (AssetRef) added in this work is the panel image (`PanelView.image_path`).
+
 ---
 
 ## D3. The command layer is `acture`; reuse its record/replay primitives — **[confirm + call]**
@@ -237,8 +250,6 @@ safe). (2) Drift is guarded both sides: Python pins JSON Schema ↔ Pydantic
 ## Open judgment calls deferred to issues (not yet decided)
 
 - Whether `play()` needs a **Python mirror** for MVP or whether TS-only suffices until render.
-- Demo Document → `reelee.Project` field mapping: build a `Project`, or feed `PanelView`s via a
-  custom `film_renderer`.
 - Whether to register the Demo Document as a **`lacing` body schema** in MVP or defer.
 
 These are tracked as enhancement issues — the project's permanent development memory.

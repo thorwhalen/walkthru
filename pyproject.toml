@@ -23,6 +23,9 @@ Homepage = "https://github.com/thorwhalen/walkthru"
 
 [project.optional-dependencies]
 testing = []
+# The reelee RenderTarget (walkthru.ecosystem.reelee) — an optional ecosystem extra behind the
+# ports firewall, never a hard dependency of the core. See DECISIONS.md §D2.
+reelee = ["reelee", "burns", "mixing"]
 
 [tool.ruff]
 line-length = 88
