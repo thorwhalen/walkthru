@@ -207,10 +207,36 @@ whatever is awaitable (`_maybe_await`).
 
 ---
 
+## D10. Zod codegen is a self-contained `ts/` build script, not reelee-web's toolchain — **[call]**
+
+**Open question (was PLAN §9):** where the Zod codegen lives — a `schema/` build script vs.
+reusing reelee-web's codegen toolchain.
+
+**Decision:** a self-contained `ts/scripts/codegen.mjs` that consumes the committed
+`schema/demo-document.schema.json` (the Pydantic-emitted artifact) and writes
+`ts/src/schema.generated.ts`. It uses the **same tools** reelee-web uses — `json-schema-to-zod` +
+zod v4 — but **not** reelee's `export-schemas` CLI or `lacing` body-schema registry.
+
+**Why:** reelee-web's `scripts/codegen.mjs` is coupled to `python -m reelee export-schemas` and a
+`lacing` `index.json` registry — machinery walkthru does not have, and whose adoption PLAN §9 still
+defers (the `lacing` body-schema question). Reusing the *technique* without the *coupling* keeps
+the TS side runnable with no Python toolchain and preserves the core/adapter firewall: TS depends
+only on the JSON contract, never on `walkthru`/`reelee`/`lacing`.
+
+**Two gotchas handled:** (1) `json-schema-to-zod` does **not** dereference `$ref` (CLI *or* API) —
+it renders Pydantic's `$defs` refs as `z.any()`; we inline them first with
+`@apidevtools/json-schema-ref-parser` (the Demo Document schema is a DAG, so full dereference is
+safe). (2) Drift is guarded both sides: Python pins JSON Schema ↔ Pydantic
+(`test_committed_json_schema_is_up_to_date`); TS pins the committed Zod ↔ JSON Schema via
+`codegen.mjs --check` (run by `ts/src/schema.codegen.test.ts`). Discriminated unions arrive as
+`oneOf` → json-schema-to-zod's "exactly one variant passes" `superRefine`, which is faithful
+(closed union; unknown `type`/`kind` rejected — covered by the round-trip negatives).
+
+---
+
 ## Open judgment calls deferred to issues (not yet decided)
 
 - Whether `play()` needs a **Python mirror** for MVP or whether TS-only suffices until render.
-- **Where codegen runs** (a `schema/` build script vs. reusing reelee-web's toolchain).
 - Demo Document → `reelee.Project` field mapping: build a `Project`, or feed `PanelView`s via a
   custom `film_renderer`.
 - Whether to register the Demo Document as a **`lacing` body schema** in MVP or defer.

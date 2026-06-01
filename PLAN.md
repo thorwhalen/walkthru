@@ -278,6 +278,7 @@ Adapters must never be required to run core tests.
   `PanelView`s directly via a custom `film_renderer`?). Needs a closer read of
   `reelee/storyboard_export.py` + `kenburns_video.py`.
 - Whether the Python `play()` mirror is needed for MVP, or TS-only suffices until render time.
-- Where the codegen step lives (a `schema/` build script vs. reusing reelee-web's codegen
-  toolchain).
+- ~~Where the codegen step lives~~ — **resolved (DECISIONS §D10):** a self-contained
+  `ts/scripts/codegen.mjs` over the committed JSON Schema (`json-schema-to-zod` + zod v4, refs
+  pre-inlined), not reelee-web's `export-schemas`/`lacing` toolchain.
 - Whether to register the Demo Document as a `lacing` body schema in MVP or defer.

@@ -9,14 +9,22 @@ import pytest
 
 from walkthru.core.schema import DemoDocument, demo_document_json_schema
 
-from tests.builders import make_minimal_demo, make_rich_demo
+from tests.builders import make_full_demo, make_minimal_demo, make_rich_demo
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_FILE = ROOT / "schema" / "demo-document.schema.json"
-FIXTURE_FILE = ROOT / "schema" / "fixtures" / "minimal-demo.json"
+FIXTURE_DIR = ROOT / "schema" / "fixtures"
+FIXTURE_FILE = FIXTURE_DIR / "minimal-demo.json"
+
+#: Committed fixtures and the builder each must reproduce — the Python side of the cross-language
+#: contract the TS round-trip test (``ts/src/schema.roundtrip.test.ts``) validates from.
+FIXTURES = [
+    (FIXTURE_DIR / "minimal-demo.json", make_minimal_demo),
+    (FIXTURE_DIR / "full-demo.json", make_full_demo),
+]
 
 
-@pytest.mark.parametrize("make", [make_minimal_demo, make_rich_demo])
+@pytest.mark.parametrize("make", [make_minimal_demo, make_rich_demo, make_full_demo])
 def test_json_roundtrip_is_lossless(make):
     doc = make()
     wire = doc.model_dump_json(by_alias=True)
@@ -53,14 +61,21 @@ def test_committed_json_schema_is_up_to_date():
     assert on_disk == demo_document_json_schema()
 
 
-def test_committed_fixture_validates_and_matches_builder():
-    assert FIXTURE_FILE.exists(), f"missing {FIXTURE_FILE}"
-    doc = DemoDocument.model_validate_json(FIXTURE_FILE.read_text())
-    assert doc == make_minimal_demo()
+@pytest.mark.parametrize("fixture, make", FIXTURES)
+def test_committed_fixture_validates_and_matches_builder(fixture, make):
+    """Each committed fixture must re-parse to exactly its builder's document.
+
+    This anchors the fixture the TS round-trip reads: if the fixture drifts from the SSOT, both
+    this test and the TS ``schema.roundtrip`` test fail together.
+    """
+    assert fixture.exists(), f"missing {fixture}; regenerate from {make.__name__}()"
+    doc = DemoDocument.model_validate_json(fixture.read_text())
+    assert doc == make()
 
 
-def test_fixture_validates_against_json_schema():
-    """Validate the fixture against the emitted JSON Schema (skipped if jsonschema absent)."""
+@pytest.mark.parametrize("fixture, make", FIXTURES)
+def test_fixture_validates_against_json_schema(fixture, make):
+    """Validate each fixture against the emitted JSON Schema (skipped if jsonschema absent)."""
     jsonschema = pytest.importorskip("jsonschema")
-    instance = json.loads(FIXTURE_FILE.read_text())
+    instance = json.loads(fixture.read_text())
     jsonschema.validate(instance=instance, schema=demo_document_json_schema())
