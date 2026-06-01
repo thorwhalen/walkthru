@@ -6,6 +6,15 @@ here or from the top-level :mod:`walkthru` package.
 """
 
 from walkthru.core.engine import iter_events, play, record
+from walkthru.core.timeline import (
+    ResolvedCamera,
+    ResolvedCue,
+    ResolvedNarration,
+    ResolvedStep,
+    Timeline,
+    iter_resolved_steps,
+    resolve_timeline,
+)
 from walkthru.core.events import (
     AfterCommand,
     BeatEvent,
@@ -55,6 +64,14 @@ __all__ = [
     "play",
     "record",
     "iter_events",
+    # timeline
+    "resolve_timeline",
+    "iter_resolved_steps",
+    "Timeline",
+    "ResolvedStep",
+    "ResolvedCue",
+    "ResolvedNarration",
+    "ResolvedCamera",
     # schema
     "DemoDocument",
     "Meta",
