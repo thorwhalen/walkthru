@@ -18,23 +18,36 @@
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "codegen": "node scripts/codegen.mjs",
     "test": "vitest run",
     "lint": "tsc --noEmit"
   },
   "license": "MIT",
+  "dependencies": {
+    "zod": "^4"
+  },
   "devDependencies": {
+    "@apidevtools/json-schema-ref-parser": "^15.3.5",
+    "@types/node": "^25.9.1",
+    "json-schema-to-zod": "^2.8.1",
     "tsup": "^8",
     "typescript": "^5",
     "vitest": "^2"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   },
   "wads": {
     "ci": {
       "subdir": "ts",
       "packageManager": "npm",
-      "nodeVersions": ["20", "22", "24"],
+      "nodeVersions": [
+        "20",
+        "22",
+        "24"
+      ],
       "publishNode": "24",
       "lintCommand": "npm run lint --if-present",
       "testCommand": "npm test --if-present",

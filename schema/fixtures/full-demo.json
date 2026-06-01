@@ -1,0 +1,341 @@
+{
+  "id": "demo-full",
+  "meta": {
+    "title": "The full tour",
+    "description": "Exercises every schema branch.",
+    "schemaVersion": "0.1.0"
+  },
+  "sections": [
+    {
+      "id": "intro",
+      "title": "Intro",
+      "steps": [
+        {
+          "kind": "command",
+          "id": "step-1",
+          "command": {
+            "id": "doc.edit",
+            "params": {
+              "text": "hello"
+            }
+          },
+          "timing": {
+            "durationMs": 1000,
+            "holdAfterMs": 200
+          },
+          "next": null
+        },
+        {
+          "kind": "beat",
+          "id": "beat-1",
+          "beatKind": "textCard",
+          "timing": {
+            "durationMs": 400,
+            "holdAfterMs": null
+          },
+          "text": "Now let's save."
+        },
+        {
+          "kind": "command",
+          "id": "step-2",
+          "command": {
+            "id": "doc.save",
+            "params": null
+          },
+          "timing": {
+            "durationMs": 600,
+            "holdAfterMs": null
+          },
+          "next": null
+        }
+      ]
+    }
+  ],
+  "tracks": {
+    "cues": [
+      {
+        "id": "cue-highlight",
+        "anchor": {
+          "stepId": "step-2",
+          "localOffsetMs": 0
+        },
+        "durationMs": null,
+        "target": {
+          "primary": {
+            "strategy": "role",
+            "value": "button",
+            "name": "Save"
+          },
+          "fallbacks": [
+            {
+              "strategy": "testid",
+              "value": "save-btn",
+              "name": null
+            },
+            {
+              "strategy": "css",
+              "value": "button.save",
+              "name": null
+            }
+          ],
+          "bbox": {
+            "x": 10.0,
+            "y": 20.0,
+            "width": 120.0,
+            "height": 40.0
+          },
+          "scrollAnchor": {
+            "locator": {
+              "strategy": "testid",
+              "value": "scroll-pane",
+              "name": null
+            },
+            "fraction": 0.25
+          }
+        },
+        "type": "highlight",
+        "color": "#ffcc00",
+        "thickness": 2,
+        "padding": 4,
+        "shape": "rect"
+      },
+      {
+        "id": "cue-spotlight",
+        "anchor": {
+          "stepId": "step-2",
+          "localOffsetMs": 50
+        },
+        "durationMs": null,
+        "target": {
+          "primary": {
+            "strategy": "role",
+            "value": "button",
+            "name": "Save"
+          },
+          "fallbacks": [
+            {
+              "strategy": "testid",
+              "value": "save-btn",
+              "name": null
+            },
+            {
+              "strategy": "css",
+              "value": "button.save",
+              "name": null
+            }
+          ],
+          "bbox": {
+            "x": 10.0,
+            "y": 20.0,
+            "width": 120.0,
+            "height": 40.0
+          },
+          "scrollAnchor": {
+            "locator": {
+              "strategy": "testid",
+              "value": "scroll-pane",
+              "name": null
+            },
+            "fraction": 0.25
+          }
+        },
+        "type": "spotlight",
+        "opacity": 0.6,
+        "color": "#000000",
+        "feather": 8
+      },
+      {
+        "id": "cue-hotspot",
+        "anchor": {
+          "stepId": "step-2",
+          "localOffsetMs": 100
+        },
+        "durationMs": null,
+        "target": {
+          "primary": {
+            "strategy": "role",
+            "value": "button",
+            "name": "Save"
+          },
+          "fallbacks": [
+            {
+              "strategy": "testid",
+              "value": "save-btn",
+              "name": null
+            },
+            {
+              "strategy": "css",
+              "value": "button.save",
+              "name": null
+            }
+          ],
+          "bbox": {
+            "x": 10.0,
+            "y": 20.0,
+            "width": 120.0,
+            "height": 40.0
+          },
+          "scrollAnchor": {
+            "locator": {
+              "strategy": "testid",
+              "value": "scroll-pane",
+              "name": null
+            },
+            "fraction": 0.25
+          }
+        },
+        "type": "hotspot",
+        "pulse": "double",
+        "size": 24
+      },
+      {
+        "id": "cue-callout",
+        "anchor": {
+          "stepId": "step-2",
+          "localOffsetMs": 150
+        },
+        "durationMs": null,
+        "target": {
+          "primary": {
+            "strategy": "role",
+            "value": "button",
+            "name": "Save"
+          },
+          "fallbacks": [
+            {
+              "strategy": "testid",
+              "value": "save-btn",
+              "name": null
+            },
+            {
+              "strategy": "css",
+              "value": "button.save",
+              "name": null
+            }
+          ],
+          "bbox": {
+            "x": 10.0,
+            "y": 20.0,
+            "width": 120.0,
+            "height": 40.0
+          },
+          "scrollAnchor": {
+            "locator": {
+              "strategy": "testid",
+              "value": "scroll-pane",
+              "name": null
+            },
+            "fraction": 0.25
+          }
+        },
+        "type": "callout",
+        "text": "Click Save to persist your changes.",
+        "placement": "top",
+        "arrow": true
+      },
+      {
+        "id": "cue-cursor",
+        "anchor": {
+          "stepId": "step-2",
+          "localOffsetMs": 200
+        },
+        "durationMs": null,
+        "target": {
+          "primary": {
+            "strategy": "role",
+            "value": "button",
+            "name": "Save"
+          },
+          "fallbacks": [
+            {
+              "strategy": "testid",
+              "value": "save-btn",
+              "name": null
+            },
+            {
+              "strategy": "css",
+              "value": "button.save",
+              "name": null
+            }
+          ],
+          "bbox": {
+            "x": 10.0,
+            "y": 20.0,
+            "width": 120.0,
+            "height": 40.0
+          },
+          "scrollAnchor": {
+            "locator": {
+              "strategy": "testid",
+              "value": "scroll-pane",
+              "name": null
+            },
+            "fraction": 0.25
+          }
+        },
+        "type": "cursor",
+        "fromTarget": {
+          "primary": {
+            "strategy": "testid",
+            "value": "editor",
+            "name": null
+          },
+          "fallbacks": [],
+          "bbox": null,
+          "scrollAnchor": null
+        },
+        "click": true,
+        "easing": "ease-in-out"
+      }
+    ],
+    "narration": [
+      {
+        "id": "narr-1",
+        "text": "First, let's type some text.",
+        "anchor": {
+          "stepId": "step-1",
+          "localOffsetMs": 0,
+          "durationMs": 1000
+        },
+        "audioRef": {
+          "uri": "assets/narr-1.wav",
+          "mime": "audio/wav"
+        },
+        "tts": {
+          "engine": "piper",
+          "voice": "en_US-amy",
+          "rate": 1.0,
+          "ssml": null
+        },
+        "wordTimings": [
+          {
+            "word": "First",
+            "tMs": 0
+          },
+          {
+            "word": "let's",
+            "tMs": 300
+          }
+        ]
+      }
+    ],
+    "camera": [
+      {
+        "id": "cam-1",
+        "anchor": {
+          "stepId": "step-2",
+          "localOffsetMs": 0
+        },
+        "focus": {
+          "x": 0.0,
+          "y": 0.0,
+          "width": 200.0,
+          "height": 100.0
+        },
+        "zoom": 1.5,
+        "easing": "ease-out",
+        "holdMs": 300
+      }
+    ]
+  }
+}
