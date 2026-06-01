@@ -259,6 +259,10 @@ class CommandStep(_Base):
     id: Id
     command: Command
     timing: Timing
+    #: Optional pre-captured still for this step — the panel image a render target shows while the
+    #: step plays (e.g. reelee maps it to ``PanelView.image_path``). Like ``audioRef``, it is a
+    #: regenerable reference, not the SSOT: the command/timing is the source of truth.
+    poster: Optional[AssetRef] = None
     #: RESERVED branching seam — typed but never traversed by the engine (YAGNI / rule of three).
     next: Optional[Id] = None
 
@@ -271,6 +275,9 @@ class Beat(_Base):
     beat_kind: Literal["pause", "textCard", "broll"]
     timing: Timing
     text: Optional[str] = None
+    #: Optional still shown for this beat (a title-card background, a B-roll frame). Maps to a
+    #: render target's panel image just like :attr:`CommandStep.poster`.
+    poster: Optional[AssetRef] = None
 
 
 Step = Annotated[Union[CommandStep, Beat], Field(discriminator="kind")]

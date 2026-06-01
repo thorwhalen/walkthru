@@ -140,12 +140,14 @@ def make_full_demo() -> DemoDocument:
                         id="step-1",
                         command=Command(id="doc.edit", params={"text": "hello"}),
                         timing=Timing(duration_ms=1000, hold_after_ms=200),
+                        poster=AssetRef(uri="assets/step-1.png", mime="image/png"),
                     ),
                     Beat(
                         id="beat-1",
                         beat_kind="textCard",
                         timing=Timing(duration_ms=400),
                         text="Now let's save.",
+                        poster=AssetRef(uri="assets/beat-1.png", mime="image/png"),
                     ),
                     CommandStep(
                         id="step-2",
