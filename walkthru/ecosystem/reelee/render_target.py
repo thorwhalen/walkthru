@@ -311,7 +311,9 @@ def render_plans(
     panels = [
         (
             plan.view.image_path,
-            ken_burns_path(plan.view.index, style=style, zoom=zoom, pan=pan, easing=easing),
+            ken_burns_path(
+                plan.view.index, style=style, zoom=zoom, pan=pan, easing=easing
+            ),
             plan.duration_s,
         )
         for plan in renderable
