@@ -1,5 +1,5 @@
 {
-  "name": "walkthru",
+  "name": "acture-walkthru",
   "version": "0.0.1",
   "description": "Turn a sequence of app commands into an editable, re-renderable demo/tour artifact.",
   "type": "module",
@@ -53,7 +53,7 @@
       "testCommand": "npm test --if-present",
       "buildCommand": "npm run build --if-present",
       "publish": {
-        "enabled": false,
+        "enabled": true,
         "marker": "[publish-npm]",
         "registry": "https://registry.npmjs.org",
         "provenance": true,
