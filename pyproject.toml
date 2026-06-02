@@ -23,6 +23,10 @@ Homepage = "https://github.com/thorwhalen/walkthru"
 
 [project.optional-dependencies]
 testing = []
+# The Playwright adapters (walkthru.adapters.playwright: ElementLocator + Recorder) — an optional
+# adapter behind the ports firewall, never a hard dependency of the core. Needed only to drive a
+# real browser; the adapter itself is duck-typed and unit-tested without it. See PLAN.md §3.4.
+playwright = ["playwright"]
 # The reelee RenderTarget (walkthru.ecosystem.reelee) — an optional ecosystem extra behind the
 # ports firewall, never a hard dependency of the core. See DECISIONS.md §D2.
 reelee = ["reelee", "burns", "mixing"]
