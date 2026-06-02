@@ -81,11 +81,12 @@ coverage_threshold = 0
 sdist = true
 wheel = true
 
-# Publish / docs / metrics stay OFF during the planning / pre-release phase
-# (no release artifact, generated docs, or metrics history yet). Flip
-# publish -> true at the first real release; docs -> true once docs exist.
+# Automatic PyPI publishing: every push to the default branch (main) that passes
+# validation and is not marked [skip ci] auto-bumps the version and publishes.
+# Auth is the PYPI_PASSWORD token secret; the version-bump push-back uses the
+# GITHUB_TOKEN (contents: write is granted in .github/workflows/ci.yml).
 [tool.wads.ci.publish]
-enabled = false
+enabled = true
 skip_ci_marker = "[skip ci]"
 publish_marker = "[publish]"
 
