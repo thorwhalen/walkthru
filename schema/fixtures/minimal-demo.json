@@ -21,6 +21,7 @@
             "durationMs": 500,
             "holdAfterMs": null
           },
+          "poster": null,
           "next": null
         },
         {
@@ -37,6 +38,7 @@
             "durationMs": 800,
             "holdAfterMs": 200
           },
+          "poster": null,
           "next": null
         }
       ]

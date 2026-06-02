@@ -23,6 +23,10 @@
             "durationMs": 1000,
             "holdAfterMs": 200
           },
+          "poster": {
+            "uri": "assets/step-1.png",
+            "mime": "image/png"
+          },
           "next": null
         },
         {
@@ -33,7 +37,11 @@
             "durationMs": 400,
             "holdAfterMs": null
           },
-          "text": "Now let's save."
+          "text": "Now let's save.",
+          "poster": {
+            "uri": "assets/beat-1.png",
+            "mime": "image/png"
+          }
         },
         {
           "kind": "command",
@@ -46,6 +54,7 @@
             "durationMs": 600,
             "holdAfterMs": null
           },
+          "poster": null,
           "next": null
         }
       ]
