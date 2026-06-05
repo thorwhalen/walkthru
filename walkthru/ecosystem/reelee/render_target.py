@@ -324,7 +324,7 @@ def render_plans(
     if any(audio is not None for audio, _ in audio_segments):
         assembler = audio_assembler or _default_audio_assembler()
         with tempfile.TemporaryDirectory(prefix="walkthru_reelee_") as tmp:
-            audio_path = assembler(audio_segments, saveas=Path(tmp) / "film_audio.wav")
+            audio_path = assembler(audio_segments, output=Path(tmp) / "film_audio.wav")
             film_renderer(panels, saveas=out_path, fps=fps, audio_path=audio_path)
     else:
         film_renderer(panels, saveas=out_path, fps=fps, audio_path=None)

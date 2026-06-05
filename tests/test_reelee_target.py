@@ -202,10 +202,10 @@ def test_render_assembles_audio_when_narration_present(tmp_path):
     film = _StubFilm()
     assembled = {}
 
-    def stub_assembler(segments, *, saveas):
+    def stub_assembler(segments, *, output):
         assembled["segments"] = list(segments)
-        Path(saveas).write_bytes(b"wav")
-        return Path(saveas)
+        Path(output).write_bytes(b"wav")
+        return Path(output)
 
     render_demo_video(
         _demo(tmp_path, with_audio=True),
