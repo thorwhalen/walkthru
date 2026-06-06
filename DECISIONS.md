@@ -247,6 +247,45 @@ safe). (2) Drift is guarded both sides: Python pins JSON Schema ↔ Pydantic
 
 ---
 
+## D11. Inner-platform-effect guardrails: reserve the seam, don't build it — **[call]**
+
+**The standing risk (brief §8, PLAN §7, issue #6):** walkthru's dominant failure mode is the
+**inner-platform effect** — slowly re-inventing a video editor inside the schema. The governing
+sentence is *walkthru owns the representation, not the pixels*: the schema models **intent and
+annotation**; all compositing, easing curves, and transitions live in the **renderer**, which
+receives a validated artifact and is handed off to.
+
+**Decision:** keep this line bright by *reserving type-level seams but not building features*, and
+by enforcing the machine-checkable half in CI rather than trusting prose. The reserve-don't-build
+list (each shipped only on the stated trigger):
+
+| Reserved seam | Status in code | Build trigger |
+|---|---|---|
+| Branching / non-linear flow (`CommandStep.next`) | typed, defaults `None`, **never traversed** by the engine | **≥3 real demos** need it |
+| Parallel cue choreography, B-roll/PiP compositing, effects graphs, easing-curve DSLs | **renderer domain — never in the schema** | n/a (out of scope by design) |
+| A 6th+ cue type | five proven variants (`highlight/spotlight/hotspot/callout/cursor`) | **rule-of-three** recorded here (≥3 types sharing ≥80% handler code) |
+| Self-healing locators | `Target` carries fallbacks/bbox/scrollAnchor; re-resolution is a *suggestion* | ship as **human-reviewed** suggestions when real drift appears — never a silent SSOT rewrite |
+| Desktop stack (OBS/pywinauto/AX, OS-level overlays) | not present | Stage 4, only if demanded |
+
+And the hard "do NOT"s: no vendor/ecosystem type crosses into `core/`/`ports/`; no absolute time
+in the SSOT (only relative durations/offsets, global time derived by `resolve_timeline` — see
+§D8); emit a validated artifact, **don't embed a renderer**.
+
+**Why a decision entry and not just an issue:** issue #6 is the permanent human-facing reminder,
+but an open issue is fragile memory — it can be closed or lost. The durable home for the *why* is
+here; #6 stays open as the standing reminder and points at this entry.
+
+**Enforcement (the prose is now partly executable):**
+- `tests/test_firewall.py` — no vendor/ecosystem import reaches `core`/`ports`.
+- `tests/test_guardrails.py` — exactly the five cue types and three beat kinds (a new one fails
+  the test, forcing the rule-of-three conversation); no absolute-time field in the SSOT; and a
+  *behavioral* guard that the engine plays in linear document order and never follows `next`.
+
+A failing guardrail test is a **deliberate decision point**: if a guardrail must move, change the
+assertion *and* record the justification here first — don't loosen the test to make a change pass.
+
+---
+
 ## Open judgment calls deferred to issues (not yet decided)
 
 - Whether `play()` needs a **Python mirror** for MVP or whether TS-only suffices until render.

@@ -252,6 +252,11 @@ OTIO (NLE round-trip), WebVTT/SRT (captions — nearly free from the narration t
 - **Desktop stack** (OBS/pywinauto/AX, OS-level click-through overlays) — Stage 4, only if
   demanded.
 
+> This is a permanent guardrail. The standing reminder is issue #6; the durable rationale and the
+> *enforced* half live in **`DECISIONS.md` §D11** — `tests/test_guardrails.py` pins the cue/beat
+> taxonomy, the no-absolute-time rule, and that the engine never follows `next`;
+> `tests/test_firewall.py` pins the core/ports vendor firewall.
+
 ---
 
 ## 8. Order of work (each step keeps the core green)
