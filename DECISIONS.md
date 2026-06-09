@@ -286,6 +286,40 @@ assertion *and* record the justification here first — don't loosen the test to
 
 ---
 
+## D12. Narration realization is vendor-free port composition; mixing is the first Synthesizer — **[call]**
+
+**Context:** PLAN §8 step 6 calls for the narration tier (a `Synthesizer`, captions). The storyboard
+work (walkthru#21; cosmo_data_prep#14 M2) needs *segmented* narration — per-beat `NarrationSegment`s
+synthesized and timed separately — to replace the single monolithic blob the M1 driver carried.
+
+**Decision:** Build narration realization as **build-time orchestration over the `Synthesizer` port**,
+not as engine or vendor code:
+
+- `walkthru/narration/` is **vendor-free** (imports only `core` + `ports`): `realize_narration`
+  (synthesize each segment, measure the clip, write back `anchor.duration_ms` + `audio_ref`, returning
+  a *new* immutable document), `pace_steps_to_narration` (an opt-in pure step-duration policy), and
+  `narration_slots`/`assemble_narration_audio` (place clips at absolute timeline offsets via an
+  **injected assembler**, default `mixing.assemble_audio_track` imported lazily). This mirrors the
+  reelee render target's injected-seam idiom (§D2) exactly — the firewall stays intact and the whole
+  loop is unit-testable with fakes (no TTS/ffmpeg).
+- `walkthru/adapters/synth/` holds **`MixingSynthesizer`** — the *first concrete* `Synthesizer`
+  (ElevenLabs via `mixing`, heavy import lazy, content-idempotent clip files) — plus the
+  `mixing_duration_ms` probe. Behind the firewall; never imported by `walkthru/__init__`. New optional
+  extra `synth = ["mixing"]`.
+
+**Why "duration-from-TTS":** synthesizing and measuring each segment independently makes the measured
+clip length the segment's `duration_ms`, so beat boundaries fall straight out of `resolve_timeline`
+with **zero alignment math**. Narration stays an *independent* track (§D8) by default; pacing a step to
+its narration is opt-in (`policy="max"`/`"narration"`), never implicit.
+
+**No schema change, no new cue type** — this composes over the existing schema, so it is clear of the
+#6 rule-of-three guardrail. `narration_to_srt` is added beside the existing `narration_to_webvtt`
+(both vendor-free, in `adapters/export/`): the webvtt module deferred SRT under YAGNI, and the
+storyboard work — videos consumed by editors/uploaders that expect SRT — is the real need that
+triggered it.
+
+---
+
 ## Open judgment calls deferred to issues (not yet decided)
 
 - Whether `play()` needs a **Python mirror** for MVP or whether TS-only suffices until render.

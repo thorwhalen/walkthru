@@ -55,14 +55,45 @@ async def executor(command):           # your app's command bus (acture, Playwri
 asyncio.run(play(doc, executor))       # → runs step-1, step-2; returns an Outcome
 ```
 
-Two runnable scripts in [`examples/`](./examples) go further — a **generative** demo (commands +
-cues + narration, with JSON + WebVTT hand-off) and a **capture** demo (record a human's actions
-into the same document and replay it). Both are pure-core, no optional deps:
+Three runnable scripts in [`examples/`](./examples) go further — a **generative** demo (commands +
+cues + narration, with JSON + WebVTT hand-off), a **capture** demo (record a human's actions into the
+same document and replay it), and a **narration** demo (segment → time → caption). All are pure-core,
+no optional deps:
 
 ```bash
 python examples/generative_demo.py
 python examples/capture_demo.py
+python examples/narration_demo.py
 ```
+
+## Narration & captions
+
+Narration is a track of editable **text** anchored to steps (the Descript model: text is the source
+of truth; audio and timing are regenerable). Turning authored text into timed, voiced narration with
+captions is a three-step, fully composable pipeline:
+
+```python
+from walkthru import realize_narration, pace_steps_to_narration, resolve_timeline
+from walkthru.adapters.export import narration_to_webvtt, narration_to_srt
+from walkthru.adapters.synth import MixingSynthesizer, mixing_duration_ms
+
+# 1. Synthesize each segment and time it from its own audio (anchor.duration_ms ← measured clip).
+synth = MixingSynthesizer(voice_query="narrative_story", out_dir="tts")   # [synth] extra → ElevenLabs
+realized = await realize_narration(doc, synth=synth, measure_ms=mixing_duration_ms)
+
+# 2. (optional) Hold each beat at least as long as its line is spoken — narration-led pacing.
+paced = pace_steps_to_narration(realized.document, policy="max")
+
+# 3. Captions fall straight out of the resolved timeline — WebVTT (web-native) and SRT (universal).
+open("demo.vtt", "w").write(narration_to_webvtt(paced))
+open("demo.srt", "w").write(narration_to_srt(paced))
+```
+
+Because each segment is synthesized and measured independently, the beat boundaries fall out of
+`resolve_timeline` with **no alignment math**. Synthesis is the `Synthesizer` port and the audio
+assembler is an injected seam, so the whole flow is testable with fakes and pulls in no media stack;
+`MixingSynthesizer` (the `[synth]` extra) is the hosted-voice tier. See `examples/narration_demo.py`
+for an offline run (no API key) and `DECISIONS.md` §D8/§D12.
 
 ## Ecosystem-biased, ecosystem-independent
 
@@ -82,8 +113,9 @@ core with your own adapters.
 ## Status
 
 The **Python side is implemented**: the Demo Document schema (the SSOT), the pure play/capture
-engine, dependency-free JSON + WebVTT export, and the first adapters (Playwright locator/recorder
-and the [`reelee`](https://github.com/thorwhalen/reelee) Ken Burns render target). The TypeScript
+engine, dependency-free JSON + WebVTT + SRT export, segmented narration (synthesize → time → pace →
+assemble), and the first adapters (Playwright locator/recorder, the `mixing`/ElevenLabs voice
+synthesizer, and the [`reelee`](https://github.com/thorwhalen/reelee) Ken Burns render target). The TypeScript
 package currently ships the **schema seam** — a Zod validator codegened from the Pydantic SSOT — and
 its live capture/play engine over `acture` lands next.
 
