@@ -54,7 +54,9 @@ _DISPATCH_CMD_JS = "(p) => window.__cmd(p.n, ...p.a)"
 #: JS evaluated to dispatch an ``fx.<name>`` / ``sim.<name>`` command to ``window.__<name>``.
 _DISPATCH_HELPER_JS = "(p) => window['__' + p.n](...p.a)"
 #: JS that reads and clears the page's last command error (``window.__cmderr``).
-_READ_CMDERR_JS = "() => { const e = window.__cmderr; window.__cmderr = null; return e || null; }"
+_READ_CMDERR_JS = (
+    "() => { const e = window.__cmderr; window.__cmderr = null; return e || null; }"
+)
 
 
 class CosmosglError(RuntimeError):
