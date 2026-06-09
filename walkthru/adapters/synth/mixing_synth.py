@@ -55,7 +55,9 @@ def _media_duration_s(path: Union[str, Path]) -> float:
     return float(Audio(str(path)).full_duration)
 
 
-def mixing_duration_ms(asset: AssetRef, *, duration_fn: Optional[DurationFn] = None) -> int:
+def mixing_duration_ms(
+    asset: AssetRef, *, duration_fn: Optional[DurationFn] = None
+) -> int:
     """Measure a synthesized clip's duration in **milliseconds** (default: via ``mixing``).
 
     The default :class:`~walkthru.narration.realize.DurationProbe` for
@@ -150,5 +152,7 @@ class MixingSynthesizer:
         if not (path.exists() and not self._refresh):
             path.parent.mkdir(parents=True, exist_ok=True)
             synth_fn = self._synth_fn or _default_synth_fn()
-            await asyncio.to_thread(synth_fn, text, voice_id, path, **self._synth_kwargs())
+            await asyncio.to_thread(
+                synth_fn, text, voice_id, path, **self._synth_kwargs()
+            )
         return AssetRef(uri=str(path), mime=DEFAULT_MIME)

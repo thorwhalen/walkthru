@@ -74,7 +74,9 @@ async def realize_narration(
         duration_ms = measure_ms(asset)
         realized = segment.model_copy(
             update={
-                "anchor": segment.anchor.model_copy(update={"duration_ms": duration_ms}),
+                "anchor": segment.anchor.model_copy(
+                    update={"duration_ms": duration_ms}
+                ),
                 "audio_ref": asset,
             }
         )
