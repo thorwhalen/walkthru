@@ -72,6 +72,7 @@ from walkthru.core import (  # noqa: F401
     record,
     resolve_timeline,
 )
+from walkthru.observers import WallClockPacer
 
 __version__ = "0.0.1"
 
@@ -115,4 +116,5 @@ __all__ = [
     "Observer",
     "Outcome",
     "CommandInvocation",
+    "WallClockPacer",
 ]
