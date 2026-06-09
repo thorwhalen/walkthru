@@ -30,6 +30,10 @@ playwright = ["playwright"]
 # The reelee RenderTarget (walkthru.ecosystem.reelee) — an optional ecosystem extra behind the
 # ports firewall, never a hard dependency of the core. See DECISIONS.md §D2.
 reelee = ["reelee", "burns", "mixing"]
+# The MixingSynthesizer (walkthru.adapters.synth) — ElevenLabs TTS + audio assembly via `mixing`.
+# An optional adapter behind the ports firewall; the synth itself is duck-typed and unit-tested
+# without it (injected seams). See DECISIONS.md §D12.
+synth = ["mixing"]
 
 [tool.ruff]
 line-length = 88

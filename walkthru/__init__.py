@@ -72,6 +72,13 @@ from walkthru.core import (  # noqa: F401
     record,
     resolve_timeline,
 )
+from walkthru.narration import (
+    RealizedNarration,
+    assemble_narration_audio,
+    narration_slots,
+    pace_steps_to_narration,
+    realize_narration,
+)
 from walkthru.observers import WallClockPacer
 
 __version__ = "0.0.1"
@@ -117,4 +124,9 @@ __all__ = [
     "Outcome",
     "CommandInvocation",
     "WallClockPacer",
+    "realize_narration",
+    "RealizedNarration",
+    "pace_steps_to_narration",
+    "assemble_narration_audio",
+    "narration_slots",
 ]
