@@ -23,6 +23,13 @@
     "lint": "tsc --noEmit"
   },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thorwhalen/walkthru.git",
+    "directory": "ts"
+  },
+  "homepage": "https://github.com/thorwhalen/walkthru#readme",
+  "bugs": "https://github.com/thorwhalen/walkthru/issues",
   "dependencies": {
     "zod": "^4"
   },
