@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "walkthru"
-version = "0.0.11"
+version = "0.0.12"
 description = "Turn a sequence of app commands into an editable, re-renderable demo/tour artifact."
 readme = "README.md"
 requires-python = ">=3.10"
