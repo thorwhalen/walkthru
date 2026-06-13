@@ -52,12 +52,15 @@ from walkthru.core.schema import (
     NarrationAnchor,
     NarrationSegment,
     Rect,
+    ScrollAnchor,
     Section,
     SpotlightCue,
     Step,
+    TTS,
     Target,
     Timing,
     Tracks,
+    WordTiming,
     demo_document_json_schema,
 )
 
@@ -96,7 +99,10 @@ __all__ = [
     "CursorCue",
     "NarrationSegment",
     "NarrationAnchor",
+    "ScrollAnchor",
     "CameraKeyframe",
+    "TTS",
+    "WordTiming",
     "AssetRef",
     "demo_document_json_schema",
     # events
