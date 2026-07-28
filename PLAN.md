@@ -221,8 +221,15 @@ records (`reelee/storyboard_export.py`):
 ```python
 @dataclass(frozen=True)
 class PanelView:
-    index: int; panel_id: str; caption: str; shot_id: str; framing: str
-    camera: str; transition_in: str; notes: str; image_path: Optional[Path]
+    index: int
+    panel_id: str
+    caption: str
+    shot_id: str
+    framing: str
+    camera: str
+    transition_in: str
+    notes: str
+    image_path: Optional[Path]
 ```
 
 **First `RenderTarget` adapter (`ecosystem/reelee/`):** map the frozen JSON Demo Document →

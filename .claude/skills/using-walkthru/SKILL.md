@@ -45,12 +45,21 @@ from walkthru import DemoDocument, Section, CommandStep, Command, Timing
 doc = DemoDocument(
     id="demo-minimal",
     sections=[
-        Section(id="s1", steps=[
-            CommandStep(id="step-1", command=Command(id="app.open"),
-                        timing=Timing(duration_ms=500)),
-            CommandStep(id="step-2", command=Command(id="app.click", params={"x": 1, "y": 2}),
-                        timing=Timing(duration_ms=800, hold_after_ms=200)),
-        ]),
+        Section(
+            id="s1",
+            steps=[
+                CommandStep(
+                    id="step-1",
+                    command=Command(id="app.open"),
+                    timing=Timing(duration_ms=500),
+                ),
+                CommandStep(
+                    id="step-2",
+                    command=Command(id="app.click", params={"x": 1, "y": 2}),
+                    timing=Timing(duration_ms=800, hold_after_ms=200),
+                ),
+            ],
+        ),
     ],
 )
 ```
@@ -69,15 +78,21 @@ nothing itself — recording, overlays, narration, and pacing are all observers.
 ```python
 import asyncio
 from walkthru import play
-from walkthru.core.events import BeforeCommand, AfterCommand  # individual event classes live here
+from walkthru.core.events import (
+    BeforeCommand,
+    AfterCommand,
+)  # individual event classes live here
 
-async def executor(command):           # runs one Command; sync or async both fine
+
+async def executor(command):  # runs one Command; sync or async both fine
     print("run", command.id, command.params)
     return {"ok": True}
 
-async def logger(event):               # an observer: any callable taking one Event
+
+async def logger(event):  # an observer: any callable taking one Event
     if isinstance(event, (BeforeCommand, AfterCommand)):
         print(type(event).__name__, event.command.id)
+
 
 outcome = asyncio.run(play(doc, executor, observers=[logger]))
 print(outcome.ok, outcome.steps_run, outcome.errors)
@@ -107,9 +122,14 @@ and re-render it."
 ```python
 from walkthru import record, CommandInvocation, Command
 
-async def captured():                  # yields commands as the human performs them
-    yield CommandInvocation(command=Command(id="app.click", params={"x": 10, "y": 20}),
-                            result={"ok": True}, duration_ms=800)
+
+async def captured():  # yields commands as the human performs them
+    yield CommandInvocation(
+        command=Command(id="app.click", params={"x": 10, "y": 20}),
+        result={"ok": True},
+        duration_ms=800,
+    )
+
 
 doc = asyncio.run(record(captured()))
 ```
@@ -124,8 +144,15 @@ Annotations live in `doc.tracks` and attach to steps by **anchor**
 resilient locators (a primary plus ordered fallbacks).
 
 ```python
-from walkthru import (Tracks, HighlightCue, CalloutCue, Anchor,
-                      Target, Locator, NarrationSegment)
+from walkthru import (
+    Tracks,
+    HighlightCue,
+    CalloutCue,
+    Anchor,
+    Target,
+    Locator,
+    NarrationSegment,
+)
 from walkthru.core.schema import NarrationAnchor  # companion type (see note above)
 
 target = Target(
@@ -134,13 +161,23 @@ target = Target(
 )
 doc.tracks = Tracks(
     cues=[
-        HighlightCue(id="c1", anchor=Anchor(step_id="step-2"), target=target, color="#ffcc00"),
-        CalloutCue(id="c2", anchor=Anchor(step_id="step-2", local_offset_ms=100),
-                   target=target, text="Click Save to persist.", placement="top"),
+        HighlightCue(
+            id="c1", anchor=Anchor(step_id="step-2"), target=target, color="#ffcc00"
+        ),
+        CalloutCue(
+            id="c2",
+            anchor=Anchor(step_id="step-2", local_offset_ms=100),
+            target=target,
+            text="Click Save to persist.",
+            placement="top",
+        ),
     ],
     narration=[
-        NarrationSegment(id="n1", text="Now save your work.",
-                         anchor=NarrationAnchor(step_id="step-2", duration_ms=1000)),
+        NarrationSegment(
+            id="n1",
+            text="Now save your work.",
+            anchor=NarrationAnchor(step_id="step-2", duration_ms=1000),
+        ),
     ],
 )
 ```
@@ -173,12 +210,13 @@ Exporters live in `walkthru.adapters.export` (dependency-free) and
 ```python
 from walkthru.adapters.export import to_json, narration_to_webvtt
 
-frozen = to_json(doc, indent=2)          # the canonical camelCase JSON projection
-captions = narration_to_webvtt(doc)      # WebVTT captions from the narration track
+frozen = to_json(doc, indent=2)  # the canonical camelCase JSON projection
+captions = narration_to_webvtt(doc)  # WebVTT captions from the narration track
 
 # Video (requires: pip install "walkthru[reelee]")
 import asyncio
 from walkthru.ecosystem.reelee import render_demo_video
+
 mp4_path = asyncio.run(render_demo_video(doc))
 ```
 

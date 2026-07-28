@@ -42,17 +42,32 @@ from walkthru import DemoDocument, Section, CommandStep, Command, Timing, play
 
 doc = DemoDocument(
     id="demo",
-    sections=[Section(id="s1", steps=[
-        CommandStep(id="step-1", command=Command(id="app.open"), timing=Timing(duration_ms=500)),
-        CommandStep(id="step-2", command=Command(id="app.save"), timing=Timing(duration_ms=800)),
-    ])],
+    sections=[
+        Section(
+            id="s1",
+            steps=[
+                CommandStep(
+                    id="step-1",
+                    command=Command(id="app.open"),
+                    timing=Timing(duration_ms=500),
+                ),
+                CommandStep(
+                    id="step-2",
+                    command=Command(id="app.save"),
+                    timing=Timing(duration_ms=800),
+                ),
+            ],
+        )
+    ],
 )
 
-async def executor(command):           # your app's command bus (acture, Playwright, …)
+
+async def executor(command):  # your app's command bus (acture, Playwright, …)
     print("run", command.id)
     return {"ok": True}
 
-asyncio.run(play(doc, executor))       # → runs step-1, step-2; returns an Outcome
+
+asyncio.run(play(doc, executor))  # → runs step-1, step-2; returns an Outcome
 ```
 
 Three runnable scripts in [`examples/`](./examples) go further — a **generative** demo (commands +
@@ -78,7 +93,9 @@ from walkthru.adapters.export import narration_to_webvtt, narration_to_srt
 from walkthru.adapters.synth import MixingSynthesizer, mixing_duration_ms
 
 # 1. Synthesize each segment and time it from its own audio (anchor.duration_ms ← measured clip).
-synth = MixingSynthesizer(voice_query="narrative_story", out_dir="tts")   # [synth] extra → ElevenLabs
+synth = MixingSynthesizer(
+    voice_query="narrative_story", out_dir="tts"
+)  # [synth] extra → ElevenLabs
 realized = await realize_narration(doc, synth=synth, measure_ms=mixing_duration_ms)
 
 # 2. (optional) Hold each beat at least as long as its line is spoken — narration-led pacing.
