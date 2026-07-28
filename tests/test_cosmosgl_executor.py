@@ -7,7 +7,9 @@ dispatch call passes an ``{"n", "a"}`` arg; the ``__cmderr`` probe passes none.
 
 from __future__ import annotations
 
+import array
 import asyncio
+import base64
 
 import pytest
 
@@ -16,11 +18,24 @@ from walkthru.core.schema import Command, CommandStep, DemoDocument, Section, Ti
 from walkthru.ecosystem.cosmosgl import (
     CosmosglError,
     CosmosglExecutor,
+    deselect_command,
     fx_command,
     graph_command,
+    link_colors_command,
+    restore_positions_command,
+    save_positions_command,
+    select_command,
+    set_positions_command,
     settle_end,
     settle_start,
 )
+
+
+def _decode_f32(b64: str) -> list[float]:
+    """Decode a base64 little-endian float32 buffer back to a list of floats (test helper)."""
+    buf = array.array("f")
+    buf.frombytes(base64.b64decode(b64))
+    return list(buf)
 
 
 class FakePage:
@@ -54,6 +69,36 @@ def test_factories_build_namespaced_commands_with_positional_args():
 
 
 # --- translation -------------------------------------------------------------------------
+
+
+def test_selection_and_lifecycle_factories_are_fx_commands():
+    assert select_command([1, 2, 3]) == Command(id="fx.select", params={"args": [[1, 2, 3]]})
+    assert deselect_command() == Command(id="fx.deselect", params={"args": []})
+    assert save_positions_command() == Command(id="fx.savePositions", params={"args": []})
+    assert restore_positions_command() == Command(id="fx.restorePositions", params={"args": []})
+
+
+def test_position_and_link_factories_encode_base64_float32():
+    cmd = set_positions_command([1.0, 2.0, 3.5, -4.0])
+    assert cmd.id == "fx.setPositions"
+    (b64,) = cmd.params["args"]
+    assert isinstance(b64, str)
+    assert _decode_f32(b64) == pytest.approx([1.0, 2.0, 3.5, -4.0])
+    # a pre-encoded base64 string passes straight through
+    assert set_positions_command(b64).params["args"] == [b64]
+    # link colours are RGBA float sequences, encoded the same way
+    rgba = [1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.5]
+    assert _decode_f32(link_colors_command(rgba).params["args"][0]) == pytest.approx(rgba)
+
+
+def test_new_fx_helpers_dispatch_to___helper():
+    page = FakePage()
+    asyncio.run(CosmosglExecutor(page).play(select_command([4, 5])))
+    asyncio.run(CosmosglExecutor(page).play(save_positions_command()))
+    sel_call, save_call = page.dispatched()
+    assert "window['__' + p.n]" in sel_call[0]
+    assert sel_call[1] == {"n": "select", "a": [[4, 5]]}
+    assert save_call[1] == {"n": "savePositions", "a": []}
 
 
 def test_graph_command_dispatches_to___cmd():

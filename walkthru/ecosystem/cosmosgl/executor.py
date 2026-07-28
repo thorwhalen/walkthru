@@ -13,10 +13,13 @@ translation to ``page.evaluate``.
 **Two halves, one vocabulary.**
 
 * *Page side* — :data:`COMMAND_CATALOG_JS` installs ``window.__cmd`` (call any ``Graph`` method by
-  name) plus a few page helpers (``__startSettle`` / ``__endSettle``, and the ``__isolate`` /
-  ``__restore`` / ``__recolor`` visual-fx, since ``@cosmos.gl/graph`` has no public subset-select —
-  isolation is done by re-colouring non-members to near-transparent). A recording page builds its
-  ``Graph`` and then calls ``window.__installCosmosglCommands(graph, ctx)``.
+  name) plus page helpers: ``__startSettle`` / ``__endSettle`` (sim); the ``__isolate`` /
+  ``__restore`` / ``__recolor`` colour visual-fx (isolation by re-colouring non-members to
+  near-transparent, since the engine has no public subset-select); ``__select`` / ``__deselect``
+  (native selection greyout — dims non-members *and their links*); ``__setPositions`` /
+  ``__savePositions`` / ``__restorePositions`` (scripted relayout, e.g. an ego "wheel"); and
+  ``__linkColors`` (per-link RGBA emphasis). A recording page builds its ``Graph`` and then calls
+  ``window.__installCosmosglCommands(graph, ctx)``.
 * *Python side* — :class:`CosmosglExecutor` translates a ``Command`` into the matching
   ``page.evaluate`` call, and the :func:`graph_command` / :func:`fx_command` / :func:`settle_start`
   / :func:`settle_end` factories author the matching :class:`~walkthru.core.schema.Command`\\ s.
@@ -27,7 +30,9 @@ translation to ``page.evaluate``.
 id                  page call                     intent
 ==================  ============================  ==================================================
 ``graph.<method>``  ``window.__cmd(method, …)``    any ``Graph`` method (camera, live config, sim)
-``fx.<helper>``     ``window.__<helper>(…)``       a page visual-fx helper (``isolate``/``restore``/``recolor``)
+``fx.<helper>``     ``window.__<helper>(…)``       a page visual-fx helper (``isolate``/``restore``/``recolor``;
+                                                  ``select``/``deselect``; ``setPositions``/``savePositions``/
+                                                  ``restorePositions``; ``linkColors``)
 ``sim.<helper>``    ``window.__<helper>(…)``       a page sim-lifecycle helper (``startSettle``/``endSettle``)
 ==================  ============================  ==================================================
 
@@ -38,6 +43,9 @@ fake page and the core stays vendor-free.
 
 from __future__ import annotations
 
+import array
+import base64
+import sys
 from typing import TYPE_CHECKING, Any, Optional
 
 from walkthru.core.schema import Command
@@ -94,6 +102,71 @@ def settle_start() -> Command:
 def settle_end() -> Command:
     """A ``sim.endSettle`` command: stop the periodic re-fit and freeze (pause) the simulation."""
     return Command(id="sim.endSettle", params={"args": []})
+
+
+def _as_b64_f32(values: Any) -> str:
+    """Encode ``values`` as a base64 little-endian float32 buffer (a base64 ``str`` passes through).
+
+    Accepts a flat sequence of floats (packed with the stdlib ``array`` module — so walkthru core
+    stays numpy-free) or, duck-typed, a numpy array (flattened C-order via ``astype('<f4')``).
+    """
+    if isinstance(values, str):
+        return values
+    astype = getattr(values, "astype", None)
+    if callable(astype):  # numpy-like, without importing numpy here
+        raw = values.astype("<f4").tobytes()
+    else:
+        buf = array.array("f", values)
+        if sys.byteorder != "little":
+            buf.byteswap()
+        raw = buf.tobytes()
+    return base64.b64encode(raw).decode("ascii")
+
+
+def select_command(indices) -> Command:
+    """A ``fx.select`` command: light ``indices`` and grey out the rest — points *and their links*.
+
+    Uses cosmos.gl's native selection (``selectPointsByIndices`` + the engine's greyout opacities).
+    Unlike :func:`fx_command('isolate') <fx_command>` (a colour swap that leaves links untouched),
+    this dims the connecting links too — a cleaner "highlight a subgraph". Requires the engine's
+    ``pointGreyoutOpacity`` / ``linkGreyoutOpacity`` to be set below 1; on a paused engine the page
+    helper issues the ``render()`` the change needs to reach the GPU.
+    """
+    return fx_command("select", list(indices))
+
+
+def deselect_command() -> Command:
+    """A ``fx.deselect`` command: clear the selection (every point/link back to full opacity)."""
+    return fx_command("deselect")
+
+
+def set_positions_command(positions) -> Command:
+    """A ``fx.setPositions`` command: snap the layout to ``positions`` (a scripted relayout).
+
+    ``positions`` is a base64 float32 buffer of ``[x0, y0, x1, y1, ...]`` space coordinates, or a flat
+    float sequence / numpy array (encoded via :func:`_as_b64_f32`). Enables ego "wheels" and other
+    reorganisations; pair with :func:`save_positions_command` / :func:`restore_positions_command`.
+    """
+    return fx_command("setPositions", _as_b64_f32(positions))
+
+
+def save_positions_command() -> Command:
+    """A ``fx.savePositions`` command: snapshot current positions (for a later restore)."""
+    return fx_command("savePositions")
+
+
+def restore_positions_command() -> Command:
+    """A ``fx.restorePositions`` command: restore positions saved by :func:`save_positions_command`."""
+    return fx_command("restorePositions")
+
+
+def link_colors_command(colors) -> Command:
+    """A ``fx.linkColors`` command: set per-link RGBA colours (emphasise a subset of edges).
+
+    ``colors`` is a base64 float32 RGBA buffer (four values per link) or a flat float sequence /
+    numpy array (encoded via :func:`_as_b64_f32`).
+    """
+    return fx_command("linkColors", _as_b64_f32(colors))
 
 
 # --------------------------------------------------------------------------------------
@@ -155,6 +228,38 @@ window.__installCosmosglCommands = (graph, ctx) => {
   window.__restore = () => { if (graph && baseColors) setColors(baseColors); };
   // Swap the colour lens (e.g. "degree" vs "community") from a precomputed set.
   window.__recolor = (key) => { const set = colorSets[key]; if (set) setColors(set); };
+  // Native selection greyout: light `indices`, dim the rest — points AND their links (unlike
+  // __isolate, a colour swap that leaves links lit). Needs pointGreyoutOpacity/linkGreyoutOpacity
+  // configured below 1 on the Graph; a paused engine needs the explicit render() to flush.
+  const b64f32 = (b) => { const s = atob(b), u = new Uint8Array(s.length);
+    for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return new Float32Array(u.buffer); };
+  let savedPositions = null;
+  window.__select = (indices) => {
+    try { graph.selectPointsByIndices(indices); graph.render(); }
+    catch (e) { window.__cmderr = String(e); }
+  };
+  window.__deselect = () => {
+    try { graph.unselectPoints(); graph.render(); }
+    catch (e) { window.__cmderr = String(e); }
+  };
+  // Scripted relayout from a base64 float32 [x0,y0,...] buffer (dontRescale keeps space coords).
+  window.__setPositions = (b64) => {
+    try { graph.setPointPositions(b64f32(b64), true); graph.render(); }
+    catch (e) { window.__cmderr = String(e); }
+  };
+  window.__savePositions = () => {
+    try { savedPositions = graph.getPointPositions(); }
+    catch (e) { window.__cmderr = String(e); }
+  };
+  window.__restorePositions = () => {
+    try { if (savedPositions) { graph.setPointPositions(Float32Array.from(savedPositions), true); graph.render(); } }
+    catch (e) { window.__cmderr = String(e); }
+  };
+  // Per-link RGBA colours from a base64 float32 buffer (4 per link) — emphasise a subset of edges.
+  window.__linkColors = (b64) => {
+    try { graph.setLinkColors(b64f32(b64)); graph.render(); }
+    catch (e) { window.__cmderr = String(e); }
+  };
 };
 """
 
