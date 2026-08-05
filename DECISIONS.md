@@ -164,6 +164,19 @@ history yet, `[tool.wads.ci].publish/docs/metrics` are set to `enabled = false` 
 ruff stay on so CI gives real signal). Flip `publish` on at the first release; `docs` on once
 docs exist. This is a phase toggle, not a convention change.
 
+**Two packages, two publish gates (issue #23).** Once both `publish` toggles were on, the
+Python-only `ci.yml` and the `ts/**`-filtered `npm-ci-ts.yml` overlapped in one direction: a
+TS-only push to `main` still ran `ci.yml`, whose publish job auto-bumped and released a Python
+version containing no Python change (it fired three times). The fix is a `paths-ignore: ts/**`
+on `ci.yml`'s **`push`** trigger only. That is precisely a publish gate — the reusable
+workflow's publish job is reachable only from a push to the default branch — while
+`pull_request` stays unfiltered so the Python test matrix runs on every PR whatever it touches.
+A deny-list is used rather than an allow-list because a forgotten allow-list entry suppresses a
+legitimate release *silently*; `paths-ignore` fails open. Fixed locally, **not** in wads'
+reusable `uv-ci.yml`, which is the publish gate for ~190 repos where a misfiring paths
+predicate would silently suppress releases at fleet scale. `tests/test_ci_workflow.py` pins
+both halves.
+
 ---
 
 ## D7. Pydantic v2 over plain dataclasses for the Python SSOT — **[call]**
@@ -244,6 +257,15 @@ safe). (2) Drift is guarded both sides: Python pins JSON Schema ↔ Pydantic
 `codegen.mjs --check` (run by `ts/src/schema.codegen.test.ts`). Discriminated unions arrive as
 `oneOf` → json-schema-to-zod's "exactly one variant passes" `superRefine`, which is faithful
 (closed union; unknown `type`/`kind` rejected — covered by the round-trip negatives).
+
+**Third gotcha — one schema induces two types (issue #24).** `json-schema-to-zod` emits only
+`z.infer`, the **post-parse** type, in which every field carrying a `.default(...)` is required.
+That is correct for a `parse()` result and wrong for a literal you are constructing, which is why
+the README examples originally dropped the `: DemoDocument` annotation and lost type checking
+altogether. The codegen therefore also emits the `z.input` twin, **`DemoDocumentInput`**, where
+defaulted fields are optional. The alias is deliberately *not* swapped — `DemoDocument` stays the
+post-parse type, since that is what `parse()` returns. `ts/src/schema.types.test.ts` pins both
+directions at compile time (a `@ts-expect-error` fails the build if the two types ever collapse).
 
 ---
 

@@ -22,7 +22,39 @@
 # action uses peaceiris/actions-gh-pages (branch-based) + REST API,
 # not the OIDC `actions/deploy-pages` flow.
 name: Continuous Integration
-on: [push, pull_request]
+#
+# TRIGGERS — the `push` filter is a PUBLISH gate, not a test gate (issue #23).
+#
+# This repo is a Python package (root) plus a sibling TypeScript package (`ts/`,
+# `acture-walkthru`) with its own workflow, `npm-ci-ts.yml`, filtered to `ts/**`.
+# Before this filter existed, a TS-only push to `main` (e.g. an `[publish-npm]`
+# commit) ran this workflow, and the reusable workflow's publish job auto-bumped
+# and released a *Python* patch version that contained no Python change. That
+# fired three times and burns an unrecoverable PyPI version number each time.
+#
+# Why the filter goes on `push` only:
+#   - The publish job (inside i2mint/wads' uv-ci.yml) is gated on
+#     `github.ref == refs/heads/<default-branch>`, so it is reachable ONLY from a
+#     `push` event. Filtering `push` therefore gates exactly the publish.
+#   - `pull_request` is deliberately left UNFILTERED so the full Python test
+#     matrix still runs on every PR, including TS-only ones. Putting `paths` on
+#     both triggers would silence the tests, not just the publish — and a
+#     silently-skipped test suite is a worse failure than a redundant release.
+#
+# Why a deny-list (`paths-ignore`) and not an allow-list (`paths`):
+#   a forgotten entry in an allow-list SUPPRESSES a legitimate release silently,
+#   which is the worse direction to fail. `paths-ignore` fails open — anything
+#   not explicitly TS-only still publishes, exactly as before.
+#
+# `workflow_dispatch` is the escape hatch: if a Python release is ever wanted
+# after a TS-only change, run this workflow manually on the default branch.
+on:
+  push:
+    paths-ignore:
+      - "ts/**"
+      - ".github/workflows/npm-ci-ts.yml"
+  pull_request:
+  workflow_dispatch:
 jobs:
   ci:
     uses: i2mint/wads/.github/workflows/uv-ci.yml@master

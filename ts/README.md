@@ -1,7 +1,7 @@
 # acture-walkthru
 
 The **TypeScript surface of [walkthru](https://github.com/thorwhalen/walkthru)** —
-a Zod schema (and its inferred type) for the *Demo Document*, the editable,
+a Zod schema (and its inferred types) for the *Demo Document*, the editable,
 re-renderable artifact that represents a demo/tour.
 
 The schema is generated from walkthru's Python Pydantic single source of truth, so
@@ -22,10 +22,22 @@ const doc: DemoDocument = demoDocumentSchema.parse(JSON.parse(jsonString));
 // and the wire format is camelCase (durationMs, holdAfterMs, stepId, …).
 ```
 
-A minimal document:
+## Two types, one schema
+
+`DemoDocument` is the **post-parse** shape and `DemoDocumentInput` the **pre-parse**
+one. The schema fills a lot of defaults (`kind`, `command.params`, `timing.holdAfterMs`,
+`meta.schemaVersion`, …), so a value returned by `parse()` has them all — while a literal
+you are *writing* may omit every one of them. Annotate accordingly:
 
 ```ts
-const doc = {
+import {
+  demoDocumentSchema,
+  type DemoDocument,
+  type DemoDocumentInput,
+} from "acture-walkthru";
+
+// Pre-parse: omit anything the schema defaults.
+const doc: DemoDocumentInput = {
   id: "demo-minimal",
   sections: [
     {
@@ -37,12 +49,15 @@ const doc = {
     },
   ],
 };
-const validated = demoDocumentSchema.parse(doc); // -> typed DemoDocument
+
+// Post-parse: every defaulted field is now guaranteed present.
+const validated: DemoDocument = demoDocumentSchema.parse(doc);
 ```
 
 ## What's here / what's coming
 
-- **Now:** `demoDocumentSchema` (Zod validator) + the `DemoDocument` type.
+- **Now:** `demoDocumentSchema` (Zod validator) + the `DemoDocument` /
+  `DemoDocumentInput` types.
 - **Later:** the live capture/play engine over [`acture`](https://github.com/thorwhalen/acture).
 
 The Python package [`walkthru`](https://pypi.org/project/walkthru/) owns the schema
