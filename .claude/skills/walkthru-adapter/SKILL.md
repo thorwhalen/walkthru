@@ -27,7 +27,7 @@ importing the core with a clean module table and asserting none of these leaked:
 This is what makes `pip install walkthru` usable with *your own* adapters and
 keeps any one vendor from becoming a hard dependency.
 
-## The eight ports (pick the one you're implementing)
+## The nine ports (pick the one you're implementing)
 
 All are `@runtime_checkable` Protocols; methods are `async`.
 
@@ -37,6 +37,7 @@ All are `@runtime_checkable` Protocols; methods are `async`.
 | `Recorder` | `start() -> None`, `stop() -> AssetRef` | record screen to media |
 | `ActionRecorder` | `record() -> AsyncIterator[CommandInvocation]` | capture-mode input stream |
 | `ElementLocator` | `bounds(target: Target) -> Rect` | resolve a `Target` to live geometry |
+| `ReadinessWaiter` | `wait(condition: WaitFor) -> None` | block until a step's `timing.waitFor` gate holds |
 | `CueRenderer` | `show(cue: Cue, rect: Rect \| None = None) -> None` | draw a cue |
 | `Transcriber` | `transcribe(audio: AssetRef) -> list[WordTiming]` | speech → word timings |
 | `Synthesizer` | `say(text: str) -> AssetRef` | text → speech audio |

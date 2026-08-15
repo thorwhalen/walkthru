@@ -110,6 +110,38 @@ def make_rich_demo() -> DemoDocument:
     )
 
 
+def make_gated_demo() -> DemoDocument:
+    """One command step that declares a readiness gate and owns a cue pointing at the same target.
+
+    The fixture the engine's ``waiter`` wiring is asserted against: the gate must resolve *after*
+    the command's effect and *before* the cue, so a cue never lands on something not yet on screen.
+    """
+    target = Target(primary=Locator(strategy="testid", value="graph-canvas"))
+    return DemoDocument(
+        id="demo-gated",
+        sections=[
+            Section(
+                id="s1",
+                steps=[
+                    CommandStep(
+                        id="step-1",
+                        command=Command(id="app.navigate", params={"to": "/graph"}),
+                        timing=Timing(
+                            duration_ms=500,
+                            wait_for=ElementReady(target=target, timeout_ms=5000),
+                        ),
+                    ),
+                ],
+            )
+        ],
+        tracks=Tracks(
+            cues=[
+                HighlightCue(id="c1", anchor=Anchor(step_id="step-1"), target=target),
+            ],
+        ),
+    )
+
+
 def make_full_demo() -> DemoDocument:
     """The broadest fixture: every Step kind, all five cue types, and every track.
 

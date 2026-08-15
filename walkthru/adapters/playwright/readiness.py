@@ -8,9 +8,12 @@ conditions onto Playwright's own waiting primitives:
 
 - :class:`~walkthru.core.schema.ElementReady` → ``locator.first.wait_for(state="visible")`` over
   the whole :class:`~walkthru.core.schema.Target`. ``primary`` and every ``fallback`` are joined
-  with Playwright's ``Locator.or_`` so *any* of them appearing satisfies the gate on **one**
-  timeout budget, rather than paying the timeout once per candidate. ``Target.bbox`` is
-  deliberately unused — record-time geometry says nothing about whether the live element exists.
+  with Playwright's ``Locator.or_`` so the whole candidate set shares **one** timeout budget,
+  rather than paying the timeout once per candidate. Precisely: the gate holds when the first
+  candidate *in DOM order* becomes visible — ``.first`` is re-resolved on every poll, so a
+  present-but-hidden candidate earlier in the document can hold the gate open even while a later
+  one is visible. ``Target.bbox`` is deliberately unused — record-time geometry says nothing about
+  whether the live element exists.
 - :class:`~walkthru.core.schema.NetworkIdle` → ``page.wait_for_load_state("networkidle")``.
 
 "Appeared **and settled**" is expressed as ``waitFor`` + the step's existing ``holdAfterMs`` — the
@@ -49,8 +52,9 @@ class ReadinessTimeoutError(TimeoutError):
 def _any_of(page: Any, target: Target) -> Any:
     """One Playwright locator matching ``primary`` **or** any ``fallback``.
 
-    ``Locator.or_`` is what lets the whole prioritized Target share a single timeout. Order is
-    preserved for readability only — for readiness, first-to-appear wins, not first-in-list.
+    ``Locator.or_`` is what lets the whole prioritized Target share a single timeout. The list
+    order does not decide the winner — the union is re-resolved on each poll and ``.first`` takes
+    the earliest *DOM-order* match (see the module docstring).
     """
     locator = build_locator(page, target.primary)
     for fallback in target.fallbacks:

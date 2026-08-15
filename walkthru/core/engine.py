@@ -86,7 +86,9 @@ async def _await_readiness(step: Step, waiter: Optional[Waiter]) -> None:
 
     A gate whose condition never holds must **not** be swallowed: unlike a failed command — which
     is data about one step — an unmet precondition means every later step runs against an unknown
-    screen, so the waiter's exception propagates and ends the run. Declaring a gate with no
+    screen, so the waiter's exception propagates and ends the run. Note the consequence: the walk
+    ends *without* a :class:`~walkthru.core.events.DemoEnd`, so observers holding resources are
+    the caller's to close (see :class:`~walkthru.ports.ReadinessWaiter`). Declaring a gate with no
     ``waiter`` injected is a wiring mistake, not a no-op, and says so.
     """
     condition = step.timing.wait_for
@@ -94,8 +96,8 @@ async def _await_readiness(step: Step, waiter: Optional[Waiter]) -> None:
         return
     if waiter is None:
         raise ValueError(
-            f"step {step.id!r} declares timing.waitFor ({condition.kind}) but play() was given "
-            f"no waiter; pass waiter=<ReadinessWaiter>.wait (e.g. the Playwright adapter's)"
+            f"step {step.id!r} declares timing.waitFor ({condition.kind}) but no waiter was "
+            f"injected; pass waiter=<ReadinessWaiter>.wait (e.g. the Playwright adapter's)"
         )
     await _maybe_await(waiter(condition))
 

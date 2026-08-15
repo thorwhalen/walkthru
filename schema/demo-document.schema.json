@@ -417,7 +417,7 @@
     },
     "ElementReady": {
       "additionalProperties": false,
-      "description": "Wait until ``target`` resolves to a visible element.\n\nThe condition for content that arrives asynchronously \u2014 a lazily mounted panel, a WebGL\ncanvas that draws seconds after the page loads. Only *appearance* is modelled; \"and then it\nstopped moving\" is expressed with the step's existing ``holdAfterMs``, not a second condition.\n\n``target`` is the same resilient :class:`Target` cues use: any of ``primary``/``fallbacks``\nappearing satisfies the gate. ``Target.bbox`` plays no part \u2014 it is record-time geometry, and\ngeometry says nothing about whether the live element is there yet.",
+      "description": "Wait until ``target`` resolves to a visible element.\n\nThe condition for content that arrives asynchronously \u2014 a lazily mounted panel, a WebGL\ncanvas that draws seconds after the page loads. Only *appearance* is modelled; \"and then it\nstopped moving\" is expressed with the step's existing ``holdAfterMs``, not a second condition.\n\n``target`` is the same resilient :class:`Target` cues use: the whole candidate set\n(``primary`` plus ``fallbacks``) is one gate on one budget, satisfied by the first candidate a\nrunner sees become visible. ``Target.bbox`` plays no part \u2014 it is record-time geometry, and\ngeometry says nothing about whether the live element is there yet.",
       "properties": {
         "kind": {
           "const": "element",

@@ -104,8 +104,9 @@ class ElementReady(_Base):
     canvas that draws seconds after the page loads. Only *appearance* is modelled; "and then it
     stopped moving" is expressed with the step's existing ``holdAfterMs``, not a second condition.
 
-    ``target`` is the same resilient :class:`Target` cues use: any of ``primary``/``fallbacks``
-    appearing satisfies the gate. ``Target.bbox`` plays no part — it is record-time geometry, and
+    ``target`` is the same resilient :class:`Target` cues use: the whole candidate set
+    (``primary`` plus ``fallbacks``) is one gate on one budget, satisfied by the first candidate a
+    runner sees become visible. ``Target.bbox`` plays no part — it is record-time geometry, and
     geometry says nothing about whether the live element is there yet.
     """
 

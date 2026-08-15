@@ -23,7 +23,7 @@ timeline → export** (JSON, captions, or video).
 
 ```bash
 pip install walkthru                 # core (depends only on pydantic)
-pip install "walkthru[playwright]"   # + browser ElementLocator/Recorder
+pip install "walkthru[playwright]"   # + browser ElementLocator/Recorder/ReadinessWaiter
 pip install "walkthru[reelee]"       # + the Ken Burns mp4 RenderTarget
 ```
 
@@ -69,6 +69,29 @@ doc = DemoDocument(
 non-command step (a pause, text card, or B-roll) — use it for narration-only or
 title moments.
 
+`wait_for` is an optional **readiness gate** on a step's `Timing` — the cure for
+a sleep that guesses how long an async effect takes:
+
+```python
+from walkthru import ElementReady, Locator, NetworkIdle, Target, Timing
+
+Timing(
+    duration_ms=500,
+    wait_for=ElementReady(
+        target=Target(primary=Locator(strategy="testid", value="graph-canvas")),
+        timeout_ms=15_000,  # None (the default) means "the runner's own default"
+    ),
+)
+Timing(duration_ms=300, wait_for=NetworkIdle())  # the other condition
+```
+
+Those two are the whole vocabulary. The gate is resolved at run time by a
+`ReadinessWaiter` you inject — `play(doc, executor, waiter=waiter.wait)`, §2 —
+and the run blocks there until the effect is actually on screen. "Appeared
+**and** settled" is the pair `wait_for` + `hold_after_ms`: the gate observes
+arrival, the hold covers the animation. Declaring a gate without injecting a
+waiter is an error, not a no-op.
+
 ## 2. Play it (generative mode)
 
 `play` is **async** and pure: it walks the document, calls your `executor` for
@@ -112,6 +135,21 @@ AfterCommand → StepExit → … → SectionExit → DemoEnd`, interleaved with
 `CueBegin/CueEnd`, `Narration`, and `BeatEvent`. A real recording setup adds an
 observer that calls a `Recorder` port on `DemoStart`/`DemoEnd` and a
 `CueRenderer` on `CueBegin`/`CueEnd`.
+
+If any step declares a `wait_for` gate (§1), pass a `ReadinessWaiter` too — it is
+awaited between `AfterCommand` and the step's `CueBegin`, so a cue never lands on
+something that isn't on screen yet:
+
+```python
+from walkthru.adapters.playwright import PlaywrightReadinessWaiter
+
+waiter = PlaywrightReadinessWaiter(page)  # `page` is a Playwright async Page
+outcome = asyncio.run(play(doc, executor, observers=[logger], waiter=waiter.wait))
+```
+
+A gate that never holds raises out of `play` and the run ends **without**
+`DemoEnd` — deliberate, since everything after it would be filmed against an
+unknown screen. Close observer-held resources yourself (`try`/`finally`).
 
 ## 3. Capture it (capture mode)
 
@@ -241,8 +279,12 @@ const doc: DemoDocument = demoDocumentSchema.parse(JSON.parse(jsonString));
 - **`play` and `record` are async** — wrap in `asyncio.run(...)` (or `await`).
   Your `executor`/observers may be sync or async; the engine handles both.
 - **Time is relative and in milliseconds.** Never put absolute timestamps in a
-  document; derive absolute time with `resolve_timeline`.
-- **The wire format is camelCase** (`durationMs`, `holdAfterMs`, `stepId`).
+  document; derive absolute time with `resolve_timeline`. A gate's `timeout_ms`
+  is a budget, not timeline time — `resolve_timeline` never composes it.
+- **A failing `wait_for` gate ends the run**, and no `DemoEnd` reaches your
+  observers — close anything they hold yourself.
+- **The wire format is camelCase** (`durationMs`, `holdAfterMs`, `timeoutMs`,
+  `stepId`).
   Python attributes are snake_case; dump with `model_dump_json(by_alias=True)` or
   use `to_json`.
 - **Annotations attach by anchor**, not by editing the step. Add/move a cue by

@@ -69,8 +69,9 @@ walkthru/                        # repo root
   walkthru/                      # PyPI "walkthru" — package at root (wads name/name form)
     __init__.py
     core/                        # PURE: play(), lifecycle, CommandSource, schema (Pydantic SSOT)
-    ports/                       # Protocols: CommandPlayer, Recorder, ElementLocator, CueRenderer,
-                                 #            ActionRecorder, Transcriber, Synthesizer, RenderTarget
+    ports/                       # Protocols: CommandPlayer, Recorder, ActionRecorder, ElementLocator,
+                                 #            ReadinessWaiter, CueRenderer, Transcriber, Synthesizer,
+                                 #            RenderTarget
     adapters/                    # OPTIONAL impls, isolated: playwright/, obs/, whisperx/, piper/
     ecosystem/                   # OPTIONAL: reelee/, acture/, lacing/  (schema registration)
   tests/                         # Python tests (smoke now; core tests at MVP Stage 1)
@@ -142,12 +143,13 @@ Target = { primary: Locator, fallbacks: Locator[], bbox?: Rect, scrollAnchor?: {
 Re-resolve by `primary`, fall back down the list. Any self-healing is a **logged suggestion
 for human review**, never a silent SSOT rewrite.
 
-### 3.3 Ports (the seven facades — no vendor type crosses them)
+### 3.3 Ports (the nine facades — no vendor type crosses them)
 
 `CommandPlayer.play(command)→result` · `Recorder.start()/stop()→media_ref` ·
 `ActionRecorder.record()→command_stream` · `ElementLocator.bounds(target)→rect` ·
-`CueRenderer.show(cue, rect)` · `Transcriber.transcribe(audio)→timed_words` ·
-`Synthesizer.say(text)→audio` · `RenderTarget.export(artifact)→video`.
+`ReadinessWaiter.wait(condition)→None` · `CueRenderer.show(cue, rect)` ·
+`Transcriber.transcribe(audio)→timed_words` · `Synthesizer.say(text)→audio` ·
+`RenderTarget.export(artifact)→video`.
 
 ### 3.4 First adapter per port (web-first, bias confirmed)
 
@@ -157,6 +159,7 @@ for human review**, never a silent SSOT rewrite.
 | `ActionRecorder` | **`acture` `recordSequence` / dispatch-wrap** | Capture mode (§5). |
 | `Recorder` | **Playwright `screencast`** | Swap to OBS/ffmpeg for hero quality with zero core change. |
 | `ElementLocator` | **Playwright `boundingBox()`** | |
+| `ReadinessWaiter` | **Playwright `Locator.wait_for` / `Page.wait_for_load_state`** | Resolves `timing.waitFor`; `walkthru/adapters/playwright/readiness.py`. |
 | `CueRenderer` | **driver.js** (spotlight/highlight) + DOM callouts | Avoid intro.js (AGPL). |
 | `Transcriber` | **WhisperX** (draft: Web Speech) | |
 | `Synthesizer` | **Piper** (MIT) (draft: Web Speech / Kokoro.js) | Hosted TTS stubbed behind same port. |
@@ -270,7 +273,7 @@ OTIO (NLE round-trip), WebVTT/SRT (captions — nearly free from the narration t
 
 1. **Schema SSOT** (Pydantic) + emitted JSON Schema + codegened Zod + round-trip test.
 2. **Pure `core/`**: `play()`, lifecycle protocol, `CommandSource` (both directions), the
-   seven port Protocols — fully unit-tested with **in-memory fakes**, zero vendor deps. Add
+   nine port Protocols — fully unit-tested with **in-memory fakes**, zero vendor deps. Add
    the firewall CI check.
 3. **One real adapter per essential port** for the web-first generative path (acture executor
    + Playwright recorder/locator + driver.js cues).

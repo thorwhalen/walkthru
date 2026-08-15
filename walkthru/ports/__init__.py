@@ -67,6 +67,11 @@ class ReadinessWaiter(Protocol):
     itself. Raise if the condition does not hold in time — an unmet gate means everything filmed
     after it is against an unknown state, so the engine lets the failure abort the run rather than
     collecting it the way it collects a command error.
+
+    Consequence of that abort: the exception leaves ``iter_events`` *before* ``DemoEnd`` is
+    yielded, so observers never receive a terminal event. An observer holding a resource (a
+    recorder, a file handle) must therefore be managed by the caller — e.g. a ``try``/``finally``
+    or an async context manager around ``play()`` — not by waiting for ``DemoEnd``.
     """
 
     async def wait(self, condition: WaitFor) -> None: ...
