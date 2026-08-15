@@ -68,9 +68,9 @@ doctest_optionflags = ["NORMALIZE_WHITESPACE", "ELLIPSIS"]
 
 # ============================================================================
 # CI Configuration (Single Source of Truth) — read by the reusable uv-ci
-# workflow. See i2mint/wads. The frontend (npm/ts) CI is intentionally NOT
-# set up yet — it is deferred until i2mint/wads#39 (language-profile registry)
-# lands, then walkthru adopts the resulting `ts` profile. See DECISIONS.md §D6.
+# workflow. See i2mint/wads. This block governs the PYTHON package only; the
+# TypeScript package has its own SSOT in ts/package.json's `wads.ci` block,
+# driving .github/workflows/npm-ci-ts.yml. See DECISIONS.md §D6.
 # ============================================================================
 [tool.wads.ci]
 project_name = "walkthru"
