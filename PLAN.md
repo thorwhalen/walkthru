@@ -93,9 +93,10 @@ walkthru/                        # repo root
 > the two work streams wouldn't collide; walkthru now runs `npm-ci-ts.yml` off the reusable
 > `npm-ci.yml`, configured from `ts/package.json`'s `wads.ci` block. The two publish gates are
 > separate on purpose — see `DECISIONS.md` §D6 and `tests/test_ci_workflow.py`. The TS side is a
-> **single package** (`acture-walkthru`); the core/adapter firewall is enforced *within* it via
-> subpath exports + an import-boundary lint + optional peer deps, so we do not need a
-> multi-package monorepo for MVP.
+> **single package** (`acture-walkthru`), today just the schema seam (`src/index.ts` +
+> `schema.generated.ts`, typechecked by `npm run lint` → `tsc --noEmit`). When adapters land, the
+> core/adapter firewall will be enforced *within* the package via subpath exports + an
+> import-boundary lint + optional peer deps, so we do not need a multi-package monorepo for MVP.
 
 **Firewall (mandatory, CI-enforced):** `core/` and `ports/` import nothing from `adapters/`
 or `ecosystem/`. Adapters depend on ports, never the reverse. A CI check imports the core
@@ -289,13 +290,15 @@ Adapters must never be required to run core tests.
 
 ## 9. Open questions for the next sessions (tracked as issues)
 
-- ~~Exact field mapping Demo Document → `reelee.Project`~~ — **resolved (issue #9):**
+- ~~Exact field mapping Demo Document → `reelee.Project`~~ — **resolved
+  ([#3](https://github.com/thorwhalen/walkthru/issues/3), `DECISIONS.md` §D2):**
   `walkthru/ecosystem/reelee/render_target.py` maps the resolved timeline **directly** to
   `PanelView`s and drives an injectable `film_renderer`; it never reconstructs a
   `reelee.Project`, which would bleed reelee's `nw`/`lacing` graph across the firewall.
-- Whether the Python `play()` mirror is the engine, or TS gets its own live engine — **#27**.
+- Whether the Python `play()` mirror is the engine, or TS gets its own live engine —
+  [#27](https://github.com/thorwhalen/walkthru/issues/27).
 - ~~Where the codegen step lives~~ — **resolved (DECISIONS §D10):** a self-contained
   `ts/scripts/codegen.mjs` over the committed JSON Schema (`json-schema-to-zod` + zod v4, refs
   pre-inlined), not reelee-web's `export-schemas`/`lacing` toolchain.
 - Whether to register the Demo Document as a `lacing` body schema or stay ecosystem-independent
-  — **#28**.
+  — [#28](https://github.com/thorwhalen/walkthru/issues/28).
