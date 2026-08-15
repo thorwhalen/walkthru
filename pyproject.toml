@@ -66,6 +66,9 @@ convention = "google"
 minversion = "6.0"
 testpaths = ["tests"]
 doctest_optionflags = ["NORMALIZE_WHITESPACE", "ELLIPSIS"]
+markers = [
+    "live: reaches the real network on purpose — opts out of the offline guard in tests/conftest.py. Nothing is marked live today; the synth port bills per call, so adding one is a deliberate act.",
+]
 
 # ============================================================================
 # CI Configuration (Single Source of Truth) — read by the reusable uv-ci
