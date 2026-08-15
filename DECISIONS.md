@@ -344,7 +344,9 @@ triggered it.
 
 ## Open judgment calls deferred to issues (not yet decided)
 
-- Whether `play()` needs a **Python mirror** for MVP or whether TS-only suffices until render.
-- Whether to register the Demo Document as a **`lacing` body schema** in MVP or defer.
+- Whether the Python **`play()` mirror** is the engine or TS gets its own live engine —
+  [#27](https://github.com/thorwhalen/walkthru/issues/27).
+- Whether to register the Demo Document as a **`lacing` body schema** or stay
+  ecosystem-independent — [#28](https://github.com/thorwhalen/walkthru/issues/28).
 
-These are tracked as enhancement issues — the project's permanent development memory.
+These are tracked as issues — the project's permanent development memory.
