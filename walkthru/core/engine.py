@@ -9,16 +9,18 @@ One small core, one lifecycle protocol, two modes with the *driver inverted* (Re
   and assemble the *same* :class:`~walkthru.core.schema.DemoDocument`, emitting the *same*
   lifecycle so every observer behaves identically.
 
-The engine performs exactly one injected effect — calling ``executor`` — and never records,
-renders, or speaks. All other effects are injected observers/ports. ``executor`` and observers may
-be sync or async; the engine awaits whatever is awaitable.
+The engine performs only injected effects — calling ``executor``, and calling ``waiter`` for a
+step that declares a readiness gate (``timing.waitFor``, issue #18) — and never records, renders,
+speaks, or reaches into the live app itself. All other effects are injected observers/ports.
+``executor``, ``waiter`` and observers may be sync or async; the engine awaits whatever is
+awaitable.
 """
 
 from __future__ import annotations
 
 import inspect
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterable
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 from walkthru.core.events import (
     AfterCommand,
@@ -48,10 +50,14 @@ from walkthru.core.schema import (
     Section,
     Step,
     Timing,
+    WaitFor,
 )
 
 #: The executor is any callable taking a :class:`~walkthru.core.schema.Command`; sync or async.
 Executor = Callable[[Command], Union[Awaitable[Any], Any]]
+#: The waiter is any callable taking a :class:`~walkthru.core.schema.WaitFor`; sync or async.
+#: Typically :meth:`walkthru.ports.ReadinessWaiter.wait` of an adapter bound to the live app.
+Waiter = Callable[[WaitFor], Union[Awaitable[None], None]]
 
 
 async def _maybe_await(value: Any) -> Any:
@@ -75,16 +81,43 @@ def _narration_for(document: DemoDocument, step_id: str) -> Iterable[NarrationSe
             yield segment
 
 
+async def _await_readiness(step: Step, waiter: Optional[Waiter]) -> None:
+    """Block on ``step``'s readiness gate, if it declares one.
+
+    A gate whose condition never holds must **not** be swallowed: unlike a failed command — which
+    is data about one step — an unmet precondition means every later step runs against an unknown
+    screen, so the waiter's exception propagates and ends the run. Note the consequence: the walk
+    ends *without* a :class:`~walkthru.core.events.DemoEnd`, so observers holding resources are
+    the caller's to close (see :class:`~walkthru.ports.ReadinessWaiter`). Declaring a gate with no
+    ``waiter`` injected is a wiring mistake, not a no-op, and says so.
+    """
+    condition = step.timing.wait_for
+    if condition is None:
+        return
+    if waiter is None:
+        raise ValueError(
+            f"step {step.id!r} declares timing.waitFor ({condition.kind}) but no waiter was "
+            f"injected; pass waiter=<ReadinessWaiter>.wait (e.g. the Playwright adapter's)"
+        )
+    await _maybe_await(waiter(condition))
+
+
 async def iter_events(
-    document: DemoDocument, executor: Executor
+    document: DemoDocument,
+    executor: Executor,
+    *,
+    waiter: Optional[Waiter] = None,
 ) -> AsyncIterator[Event]:
     """Walk ``document`` and yield the lifecycle event stream (generative mode).
 
-    This is the canonical realization of the lifecycle protocol. The only injected effect is
+    This is the canonical realization of the lifecycle protocol. The injected effects are
     ``executor``, awaited between :class:`~walkthru.core.events.BeforeCommand` and
-    :class:`~walkthru.core.events.AfterCommand`. A command that raises yields a
+    :class:`~walkthru.core.events.AfterCommand`, and ``waiter``, awaited after the step's effect
+    has been triggered and before its cues are announced — so a cue only fires once the thing it
+    points at is on screen. A command that raises yields a
     :class:`~walkthru.core.events.CommandError` and the walk continues (the renderer/observer
-    decides what a failed step means).
+    decides what a failed step means); its readiness gate is then skipped, since waiting for the
+    effect of a command that never ran only burns the timeout.
     """
     yield DemoStart(document)
     errors: list[CommandError] = []
@@ -98,6 +131,7 @@ async def iter_events(
             for segment in _narration_for(document, step.id):
                 yield Narration(segment)
 
+            ran = True
             if isinstance(step, CommandStep):
                 yield BeforeCommand(step.command, step)
                 try:
@@ -106,11 +140,15 @@ async def iter_events(
                     err = CommandError(step.command, error, step)
                     errors.append(err)
                     yield err
+                    ran = False
                 else:
                     yield AfterCommand(step.command, result, step)
                 steps_run += 1
             else:
                 yield BeatEvent(step)
+
+            if ran:
+                await _await_readiness(step, waiter)
 
             for cue in _cues_for(document, step.id):
                 yield CueBegin(cue)
@@ -133,15 +171,20 @@ async def play(
     executor: Executor,
     *,
     observers: Iterable[Observer] = (),
+    waiter: Optional[Waiter] = None,
 ) -> Outcome:
     """Play ``document`` generatively, driving ``executor`` and notifying ``observers``.
+
+    ``waiter`` resolves any step's ``timing.waitFor`` readiness gate — required only for documents
+    that declare one, and typically the ``wait`` method of a
+    :class:`~walkthru.ports.ReadinessWaiter` adapter bound to the live app.
 
     Returns the run :class:`~walkthru.core.events.Outcome`. This is a thin driver over
     :func:`iter_events`: it forwards each event to every observer and captures the final outcome.
     """
     observers = tuple(observers)
     outcome = Outcome(ok=True, steps_run=0)
-    async for event in iter_events(document, executor):
+    async for event in iter_events(document, executor, waiter=waiter):
         if isinstance(event, DemoEnd):
             outcome = event.outcome
         await _emit(event, observers)

@@ -26,6 +26,7 @@ from walkthru.core.schema import (
     DemoDocument,
     Section,
     Timing,
+    WaitFor,
     demo_document_json_schema,
 )
 
@@ -42,6 +43,13 @@ EXPECTED_CUE_TYPES = frozenset(
 #: B-roll lives in the schema only as a *beat slot* (a still + timing), never as PiP/compositing —
 #: that is renderer domain. Adding a beat kind is a schema change worth a second look.
 EXPECTED_BEAT_KINDS = frozenset({"pause", "textCard", "broll"})
+
+#: The two declarative readiness conditions (issue #18). This vocabulary is the schema's most
+#: obvious slope toward an expression language — a ``js``/predicate condition would make the SSOT
+#: carry executable logic *and* assume a JS runtime, which is exactly the inner-platform effect
+#: issue #6 guards against. "Appeared and settled" is already expressible as ``waitFor`` plus the
+#: step's ``holdAfterMs``; a third condition needs that same bar cleared in ``DECISIONS.md``.
+EXPECTED_WAIT_FOR_KINDS = frozenset({"element", "networkIdle"})
 
 
 def _literal_value(cue_cls) -> str:
@@ -67,14 +75,29 @@ def test_only_the_three_beat_kinds():
     )
 
 
+def test_only_the_two_readiness_conditions():
+    actual = {
+        get_args(cls.model_fields["kind"].annotation)[0]
+        for cls in get_args(get_args(WaitFor)[0])
+    }
+    assert actual == set(EXPECTED_WAIT_FOR_KINDS), (
+        "Readiness vocabulary changed. `waitFor` is a small declarative gate, not an expression "
+        "language — no JS predicates, no boolean combinators, no polling DSL (issue #6, #18). "
+        "Justify any new condition in DECISIONS.md first. "
+        f"expected={sorted(EXPECTED_WAIT_FOR_KINDS)} actual={sorted(actual)}"
+    )
+
+
 # --------------------------------------------------------------------------------------
 # Relative time only — no absolute timestamp may enter the SSOT
 # --------------------------------------------------------------------------------------
 
 #: Every millisecond-valued field in the schema is a *relative* duration or offset. The SSOT stores
-#: no absolute time; global time is derived by ``resolve_timeline`` (DECISIONS §D8).
+#: no absolute time; global time is derived by ``resolve_timeline`` (DECISIONS §D8). ``timeoutMs``
+#: is a readiness gate's *budget* — a duration measured from when the gate starts, and one that
+#: ``resolve_timeline`` never composes, so it adds no second clock (issue #18).
 EXPECTED_RELATIVE_MS_FIELDS = frozenset(
-    {"durationMs", "holdAfterMs", "localOffsetMs", "holdMs", "tMs"}
+    {"durationMs", "holdAfterMs", "localOffsetMs", "holdMs", "tMs", "timeoutMs"}
 )
 
 #: Field-name fragments that would betray an absolute clock sneaking into the SSOT.

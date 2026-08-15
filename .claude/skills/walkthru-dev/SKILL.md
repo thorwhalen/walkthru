@@ -50,8 +50,9 @@ defer to the specialized skills:
    yourself importing an adapter from core, stop.
 
 4. **Relative time + anchors.** The SSOT stores only relative durations
-   (`durationMs`, `holdAfterMs`) — never absolute timestamps. Cues, narration,
-   and camera live in parallel `tracks` and attach to steps by **anchor**
+   (`durationMs`, `holdAfterMs`, and `waitFor.timeoutMs` — a readiness gate's
+   budget, never composed by `resolve_timeline`) — never absolute timestamps.
+   Cues, narration, and camera live in parallel `tracks` and attach to steps by **anchor**
    (`{stepId, localOffsetMs}`), not by fields stored on the step. Absolute time
    is *derived* by `resolve_timeline()`. This avoids a dual source of truth.
 
@@ -65,9 +66,9 @@ walkthru/                  # Python: the SSOT + pure engine + ports + adapters
     engine.py              # play() and record() — the pure engine
     events.py              # the lifecycle events + Observer/Outcome types
     timeline.py            # relative→absolute composition (resolve_timeline)
-  ports/__init__.py        # 8 Protocol port interfaces (the firewall boundary)
+  ports/__init__.py        # 9 Protocol port interfaces (the firewall boundary)
   adapters/
-    playwright/            # ElementLocator + Recorder over a Playwright page
+    playwright/            # ElementLocator + Recorder + ReadinessWaiter over a page
     export/                # dependency-free: JSON target + WebVTT captions
   ecosystem/reelee/        # first real RenderTarget: Demo Document → Ken Burns mp4
 schema/

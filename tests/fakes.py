@@ -11,7 +11,15 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 from walkthru.core.events import CommandInvocation
-from walkthru.core.schema import AssetRef, Command, Cue, Rect, Target, WordTiming
+from walkthru.core.schema import (
+    AssetRef,
+    Command,
+    Cue,
+    Rect,
+    Target,
+    WaitFor,
+    WordTiming,
+)
 
 
 class RecordingExecutor:
@@ -77,6 +85,24 @@ class FakeElementLocator:
 
     async def bounds(self, target: Target) -> Rect:
         return self._rect
+
+
+class FakeReadinessWaiter:
+    """A :class:`~walkthru.ports.ReadinessWaiter` recording every condition it awaited.
+
+    ``fail_on`` names a condition ``kind`` the gate never holds for, so the engine's abort path is
+    exercisable without a browser (a real waiter raises there too — see
+    :class:`~walkthru.adapters.playwright.ReadinessTimeoutError`).
+    """
+
+    def __init__(self, *, fail_on: str | None = None):
+        self.awaited: list[WaitFor] = []
+        self._fail_on = fail_on
+
+    async def wait(self, condition: WaitFor) -> None:
+        self.awaited.append(condition)
+        if condition.kind == self._fail_on:
+            raise TimeoutError(f"fake gate {condition.kind!r} never held")
 
 
 class FakeCueRenderer:

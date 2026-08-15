@@ -286,6 +286,7 @@ list (each shipped only on the stated trigger):
 | Branching / non-linear flow (`CommandStep.next`) | typed, defaults `None`, **never traversed** by the engine | **≥3 real demos** need it |
 | Parallel cue choreography, B-roll/PiP compositing, effects graphs, easing-curve DSLs | **renderer domain — never in the schema** | n/a (out of scope by design) |
 | A 6th+ cue type | five proven variants (`highlight/spotlight/hotspot/callout/cursor`) | **rule-of-three** recorded here (≥3 types sharing ≥80% handler code) |
+| A 3rd+ `waitFor` condition (JS predicate, boolean combinator, polling DSL) | two declarative conditions (`element`/`networkIdle`); "and settled" is `holdAfterMs`, not a condition | justify here first — an executable predicate would make the SSOT carry logic *and* assume a JS runtime |
 | Self-healing locators | `Target` carries fallbacks/bbox/scrollAnchor; re-resolution is a *suggestion* | ship as **human-reviewed** suggestions when real drift appears — never a silent SSOT rewrite |
 | Desktop stack (OBS/pywinauto/AX, OS-level overlays) | not present | Stage 4, only if demanded |
 
@@ -299,9 +300,11 @@ here; #6 stays open as the standing reminder and points at this entry.
 
 **Enforcement (the prose is now partly executable):**
 - `tests/test_firewall.py` — no vendor/ecosystem import reaches `core`/`ports`.
-- `tests/test_guardrails.py` — exactly the five cue types and three beat kinds (a new one fails
-  the test, forcing the rule-of-three conversation); no absolute-time field in the SSOT; and a
-  *behavioral* guard that the engine plays in linear document order and never follows `next`.
+- `tests/test_guardrails.py` — exactly the five cue types, three beat kinds and two readiness
+  conditions (a new one fails the test, forcing the rule-of-three conversation); no absolute-time
+  field in the SSOT — `waitFor.timeoutMs` is a gate's *budget*, never composed by
+  `resolve_timeline`, so it adds no second clock; and a *behavioral* guard that the engine plays in
+  linear document order and never follows `next`.
 
 A failing guardrail test is a **deliberate decision point**: if a guardrail must move, change the
 assertion *and* record the justification here first — don't loosen the test to make a change pass.
@@ -339,6 +342,40 @@ its narration is opt-in (`policy="max"`/`"narration"`), never implicit.
 (both vendor-free, in `adapters/export/`): the webvtt module deferred SRT under YAGNI, and the
 storyboard work — videos consumed by editors/uploaders that expect SRT — is the real need that
 triggered it.
+
+---
+
+## D13. `waitFor` is a runtime gate resolved through a port, not timeline time — **[call]**
+
+**Context:** issue #18 wants a command sequence screen-recorded reliably. The failure mode is
+asynchrony: a page navigates and the canvas it renders appears seconds later, so a fixed sleep
+either wastes footage or films a blank screen. The issue's own sketch mentioned a JS-predicate
+condition.
+
+**Decision:** add `Timing.waitFor` as a **discriminated union of exactly two declarative
+conditions** — `ElementReady{target, timeoutMs?}` and `NetworkIdle{timeoutMs?}` — resolved at run
+time by a new **`ReadinessWaiter` port** (ninth), first implemented by
+`walkthru/adapters/playwright/readiness.py`. The **JS predicate was deliberately not built**: an
+executable condition would make the SSOT carry logic *and* assume a JS runtime — the inner-platform
+effect §D11/#6 exist to stop. `tests/test_guardrails.py::test_only_the_two_readiness_conditions`
+makes that a failing test rather than a promise, and §D11's table carries the build trigger.
+
+**Three consequences worth stating:**
+
+- **A gate is not timeline time.** `resolve_timeline` composes `durationMs`/`holdAfterMs` only. How
+  long a gate happened to take is wall-clock fact about one run; the SSOT stores nominal relative
+  time, so there is no second clock (§D8 stays true).
+- **No timeout number in the SSOT.** `timeoutMs` is optional and `None` means "the runner's own
+  default" — the runner owns that number (Playwright's own 30 s, overridable per waiter).
+- **An unmet gate aborts the run.** Unlike a command error — data about one step — an unmet
+  precondition means everything filmed after it is against an unknown screen. The waiter's
+  exception propagates, which means the walk ends *without* `DemoEnd`: an observer holding a
+  resource must be closed by the caller, not by waiting for the terminal event. Emitting a failed
+  `DemoEnd` first is a plausible alternative; it changes abort semantics for every observer and was
+  left to whoever wires the first end-to-end recorder run (#18 items 2–3).
+
+**"Appeared **and** settled" needed no new vocabulary:** `waitFor` observes arrival, the existing
+`holdAfterMs` covers the animation.
 
 ---
 
