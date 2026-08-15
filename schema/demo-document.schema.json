@@ -415,6 +415,39 @@
       "title": "CursorCue",
       "type": "object"
     },
+    "ElementReady": {
+      "additionalProperties": false,
+      "description": "Wait until ``target`` resolves to a visible element.\n\nThe condition for content that arrives asynchronously \u2014 a lazily mounted panel, a WebGL\ncanvas that draws seconds after the page loads. Only *appearance* is modelled; \"and then it\nstopped moving\" is expressed with the step's existing ``holdAfterMs``, not a second condition.\n\n``target`` is the same resilient :class:`Target` cues use: any of ``primary``/``fallbacks``\nappearing satisfies the gate. ``Target.bbox`` plays no part \u2014 it is record-time geometry, and\ngeometry says nothing about whether the live element is there yet.",
+      "properties": {
+        "kind": {
+          "const": "element",
+          "default": "element",
+          "title": "Kind",
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/Target"
+        },
+        "timeoutMs": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timeoutms"
+        }
+      },
+      "required": [
+        "target"
+      ],
+      "title": "ElementReady",
+      "type": "object"
+    },
     "HighlightCue": {
       "additionalProperties": false,
       "description": "A ring/outline drawn around the target element.",
@@ -759,6 +792,33 @@
       "title": "NarrationSegment",
       "type": "object"
     },
+    "NetworkIdle": {
+      "additionalProperties": false,
+      "description": "Wait until the app's in-flight network activity has quiesced.",
+      "properties": {
+        "kind": {
+          "const": "networkIdle",
+          "default": "networkIdle",
+          "title": "Kind",
+          "type": "string"
+        },
+        "timeoutMs": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timeoutms"
+        }
+      },
+      "title": "NetworkIdle",
+      "type": "object"
+    },
     "Rect": {
       "additionalProperties": false,
       "description": "An axis-aligned rectangle in CSS pixels (viewport coordinates).",
@@ -1055,7 +1115,7 @@
     },
     "Timing": {
       "additionalProperties": false,
-      "description": "Local duration of a step, in milliseconds, plus an optional trailing hold.",
+      "description": "Local duration of a step, in milliseconds, plus an optional trailing hold and gate.\n\n``waitFor`` is a **runtime readiness gate**, not timeline time: a live runner blocks on it\nbefore the step is done, so a screen recording of an async effect is reliable without a\nguessed sleep (issue #18). It is deliberately *not* composed by\n:func:`~walkthru.core.timeline.resolve_timeline` \u2014 how long a gate happened to take is\nwall-clock fact about one run, and the SSOT stores only nominal relative time. ``durationMs``\nremains what the step is worth on the rendered timeline.",
       "properties": {
         "durationMs": {
           "minimum": 0,
@@ -1074,6 +1134,32 @@
           ],
           "default": null,
           "title": "Holdafterms"
+        },
+        "waitFor": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "element": "#/$defs/ElementReady",
+                  "networkIdle": "#/$defs/NetworkIdle"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/ElementReady"
+                },
+                {
+                  "$ref": "#/$defs/NetworkIdle"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Waitfor"
         }
       },
       "required": [

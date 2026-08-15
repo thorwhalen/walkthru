@@ -44,11 +44,12 @@ class ElementNotFoundError(LookupError):
         )
 
 
-def _build_locator(page: Any, loc: Locator) -> Any:
+def build_locator(page: Any, loc: Locator) -> Any:
     """Map a schema :class:`~walkthru.core.schema.Locator` onto a Playwright locator.
 
     Prefers Playwright's semantic getters (role / test-id / text / label) over raw CSS/XPath,
-    matching the schema's own ordering bias toward resilient strategies.
+    matching the schema's own ordering bias toward resilient strategies. Shared with
+    :mod:`walkthru.adapters.playwright.readiness`, which waits on the same locators.
     """
     if loc.strategy == "role":
         return page.get_by_role(loc.value, name=loc.name)
@@ -97,7 +98,7 @@ class PlaywrightElementLocator:
         Uses ``count()`` (which returns immediately) to skip non-matching candidates rather than
         letting ``bounding_box()`` block on its auto-wait timeout — so fallbacks are cheap to try.
         """
-        pw_locator = _build_locator(self._page, loc)
+        pw_locator = build_locator(self._page, loc)
         if await pw_locator.count() == 0:
             return None
         box = await pw_locator.first.bounding_box()

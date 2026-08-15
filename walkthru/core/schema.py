@@ -18,7 +18,11 @@ Conventions baked into the schema:
   their own :class:`Tracks`, associated to steps **by anchor** — the anchor is the SSOT for that
   association (no denormalized ``cueRefs`` on steps; see ``DECISIONS.md`` §D8).
 * **Discriminated unions, not flag soup.** ``Step`` is ``CommandStep | Beat`` (discriminator
-  ``kind``); ``Cue`` is the five proven variants (discriminator ``type``).
+  ``kind``); ``Cue`` is the five proven variants (discriminator ``type``); ``WaitFor`` is the two
+  readiness conditions (discriminator ``kind``).
+* **Runtime gates are not timeline time.** ``Timing.waitFor`` tells a *live runner* when a step's
+  effect has actually landed; the wall-clock it costs is never written back into the SSOT, and
+  :func:`~walkthru.core.timeline.resolve_timeline` composes ``durationMs``/``holdAfterMs`` only.
 * **Reserved seams, not built features.** ``CommandStep.next`` is a type-level branching seam with
   no traversal in the engine (Report 02 §Stage 3).
 """
@@ -89,15 +93,61 @@ class Target(_Base):
 
 
 # --------------------------------------------------------------------------------------
+# Readiness — the declarative gate a step waits on before it is considered done
+# --------------------------------------------------------------------------------------
+
+
+class ElementReady(_Base):
+    """Wait until ``target`` resolves to a visible element.
+
+    The condition for content that arrives asynchronously — a lazily mounted panel, a WebGL
+    canvas that draws seconds after the page loads. Only *appearance* is modelled; "and then it
+    stopped moving" is expressed with the step's existing ``holdAfterMs``, not a second condition.
+
+    ``target`` is the same resilient :class:`Target` cues use: any of ``primary``/``fallbacks``
+    appearing satisfies the gate. ``Target.bbox`` plays no part — it is record-time geometry, and
+    geometry says nothing about whether the live element is there yet.
+    """
+
+    kind: Literal["element"] = "element"
+    target: Target
+    #: ``None`` means "the runner's own default" — the SSOT does not invent a timeout number.
+    timeout_ms: Optional[int] = Field(default=None, ge=0)
+
+
+class NetworkIdle(_Base):
+    """Wait until the app's in-flight network activity has quiesced."""
+
+    kind: Literal["networkIdle"] = "networkIdle"
+    #: ``None`` means "the runner's own default" — the SSOT does not invent a timeout number.
+    timeout_ms: Optional[int] = Field(default=None, ge=0)
+
+
+WaitFor = Annotated[
+    Union[ElementReady, NetworkIdle],
+    Field(discriminator="kind"),
+]
+
+
+# --------------------------------------------------------------------------------------
 # Timing and anchors (all relative; milliseconds)
 # --------------------------------------------------------------------------------------
 
 
 class Timing(_Base):
-    """Local duration of a step, in milliseconds, plus an optional trailing hold."""
+    """Local duration of a step, in milliseconds, plus an optional trailing hold and gate.
+
+    ``waitFor`` is a **runtime readiness gate**, not timeline time: a live runner blocks on it
+    before the step is done, so a screen recording of an async effect is reliable without a
+    guessed sleep (issue #18). It is deliberately *not* composed by
+    :func:`~walkthru.core.timeline.resolve_timeline` — how long a gate happened to take is
+    wall-clock fact about one run, and the SSOT stores only nominal relative time. ``durationMs``
+    remains what the step is worth on the rendered timeline.
+    """
 
     duration_ms: int = Field(ge=0)
     hold_after_ms: Optional[int] = Field(default=None, ge=0)
+    wait_for: Optional[WaitFor] = None
 
 
 class Anchor(_Base):

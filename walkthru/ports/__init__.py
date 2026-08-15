@@ -24,6 +24,7 @@ from walkthru.core.schema import (
     DemoDocument,
     Rect,
     Target,
+    WaitFor,
     WordTiming,
 )
 
@@ -59,6 +60,19 @@ class ElementLocator(Protocol):
 
 
 @runtime_checkable
+class ReadinessWaiter(Protocol):
+    """Blocks until a step's declared ``timing.waitFor`` condition holds.
+
+    The port that lets the engine honor a readiness gate without ever touching the live app
+    itself. Raise if the condition does not hold in time — an unmet gate means everything filmed
+    after it is against an unknown state, so the engine lets the failure abort the run rather than
+    collecting it the way it collects a command error.
+    """
+
+    async def wait(self, condition: WaitFor) -> None: ...
+
+
+@runtime_checkable
 class CueRenderer(Protocol):
     """Draws a cue (optionally at a resolved rect)."""
 
@@ -91,6 +105,7 @@ __all__ = [
     "Recorder",
     "ActionRecorder",
     "ElementLocator",
+    "ReadinessWaiter",
     "CueRenderer",
     "Transcriber",
     "Synthesizer",

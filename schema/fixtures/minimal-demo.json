@@ -19,7 +19,8 @@
           },
           "timing": {
             "durationMs": 500,
-            "holdAfterMs": null
+            "holdAfterMs": null,
+            "waitFor": null
           },
           "poster": null,
           "next": null
@@ -36,7 +37,8 @@
           },
           "timing": {
             "durationMs": 800,
-            "holdAfterMs": 200
+            "holdAfterMs": 200,
+            "waitFor": null
           },
           "poster": null,
           "next": null

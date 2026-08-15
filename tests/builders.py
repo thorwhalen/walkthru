@@ -12,12 +12,14 @@ from walkthru.core.schema import (
     CommandStep,
     CursorCue,
     DemoDocument,
+    ElementReady,
     HighlightCue,
     HotspotCue,
     Locator,
     Meta,
     NarrationAnchor,
     NarrationSegment,
+    NetworkIdle,
     Rect,
     ScrollAnchor,
     Section,
@@ -111,10 +113,11 @@ def make_rich_demo() -> DemoDocument:
 def make_full_demo() -> DemoDocument:
     """The broadest fixture: every Step kind, all five cue types, and every track.
 
-    Exists to exercise the schema's discriminated unions (``Step.kind``, ``Cue.type``) and
-    optional sub-objects (``Target.bbox``/``scrollAnchor``, ``NarrationSegment.tts``/
-    ``wordTimings``, ``CameraKeyframe``) end to end — the surface the Python↔TS round-trip test
-    relies on to prove the codegened Zod is faithful to the Pydantic SSOT.
+    Exists to exercise the schema's discriminated unions (``Step.kind``, ``Cue.type``,
+    ``WaitFor.kind``) and optional sub-objects (``Target.bbox``/``scrollAnchor``,
+    ``NarrationSegment.tts``/``wordTimings``, ``CameraKeyframe``) end to end — the surface the
+    Python↔TS round-trip test relies on to prove the codegened Zod is faithful to the Pydantic
+    SSOT.
     """
     target = Target(
         primary=Locator(strategy="role", value="button", name="Save"),
@@ -139,7 +142,12 @@ def make_full_demo() -> DemoDocument:
                     CommandStep(
                         id="step-1",
                         command=Command(id="doc.edit", params={"text": "hello"}),
-                        timing=Timing(duration_ms=1000, hold_after_ms=200),
+                        # waitFor + holdAfterMs is the "appeared, then settled" pair.
+                        timing=Timing(
+                            duration_ms=1000,
+                            hold_after_ms=200,
+                            wait_for=ElementReady(target=target, timeout_ms=15000),
+                        ),
                         poster=AssetRef(uri="assets/step-1.png", mime="image/png"),
                     ),
                     Beat(
@@ -152,7 +160,7 @@ def make_full_demo() -> DemoDocument:
                     CommandStep(
                         id="step-2",
                         command=Command(id="doc.save"),
-                        timing=Timing(duration_ms=600),
+                        timing=Timing(duration_ms=600, wait_for=NetworkIdle()),
                     ),
                 ],
             )

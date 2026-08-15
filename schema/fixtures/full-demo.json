@@ -21,7 +21,44 @@
           },
           "timing": {
             "durationMs": 1000,
-            "holdAfterMs": 200
+            "holdAfterMs": 200,
+            "waitFor": {
+              "kind": "element",
+              "target": {
+                "primary": {
+                  "strategy": "role",
+                  "value": "button",
+                  "name": "Save"
+                },
+                "fallbacks": [
+                  {
+                    "strategy": "testid",
+                    "value": "save-btn",
+                    "name": null
+                  },
+                  {
+                    "strategy": "css",
+                    "value": "button.save",
+                    "name": null
+                  }
+                ],
+                "bbox": {
+                  "x": 10.0,
+                  "y": 20.0,
+                  "width": 120.0,
+                  "height": 40.0
+                },
+                "scrollAnchor": {
+                  "locator": {
+                    "strategy": "testid",
+                    "value": "scroll-pane",
+                    "name": null
+                  },
+                  "fraction": 0.25
+                }
+              },
+              "timeoutMs": 15000
+            }
           },
           "poster": {
             "uri": "assets/step-1.png",
@@ -35,7 +72,8 @@
           "beatKind": "textCard",
           "timing": {
             "durationMs": 400,
-            "holdAfterMs": null
+            "holdAfterMs": null,
+            "waitFor": null
           },
           "text": "Now let's save.",
           "poster": {
@@ -52,7 +90,11 @@
           },
           "timing": {
             "durationMs": 600,
-            "holdAfterMs": null
+            "holdAfterMs": null,
+            "waitFor": {
+              "kind": "networkIdle",
+              "timeoutMs": null
+            }
           },
           "poster": null,
           "next": null
