@@ -9,6 +9,7 @@ This mirrors the illustration package's ``RIGHTS_FIELDS`` (its SSOT for the fiel
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from walkthru.core.schema import (
     AssetRef,
@@ -18,6 +19,9 @@ from walkthru.core.schema import (
     Section,
     Timing,
 )
+
+ROOT = Path(__file__).resolve().parents[1]
+FULL_DEMO_FIXTURE = ROOT / "schema" / "fixtures" / "full-demo.json"
 
 #: Literal pin, deliberately hand-written rather than derived: a trim here is a decision, not an
 #: accident. Mirrors ``illustration.schema.RIGHTS_FIELDS`` exactly — same names, same order.
@@ -74,8 +78,14 @@ def test_cacheable_none_is_distinguishable_from_false():
     assert recorded_false.cacheable is False
 
 
-def test_a_document_with_no_rights_data_omits_the_field_as_null():
-    """An asset with no rights record round-trips with ``rights: null`` — not an error, not a stub."""
+def test_a_document_with_no_rights_data_omits_the_field_entirely():
+    """An asset with no rights record has no ``rights`` key at all — not ``null``, absent.
+
+    Not ``exclude_none`` (every other optional field still serializes its ``None``): a custom
+    ``model_serializer`` on ``AssetRef`` pops ``rights`` specifically, so a rights-free document
+    round-trips byte-identical to the shape it had before this field existed, and stays loadable
+    by a walkthru older than this field (``extra="forbid"`` never sees an unknown key).
+    """
     doc = DemoDocument(
         id="demo",
         sections=[
@@ -93,7 +103,17 @@ def test_a_document_with_no_rights_data_omits_the_field_as_null():
         ],
     )
     wire = json.loads(doc.model_dump_json(by_alias=True))
-    assert wire["sections"][0]["steps"][0]["poster"]["rights"] is None
+    assert "rights" not in wire["sections"][0]["steps"][0]["poster"]
+
+
+def test_rights_free_asset_ref_is_byte_identical_to_the_pre_field_shape():
+    """Pinned against the full-demo fixture's step-1 poster: no ``rights`` key, at all, ever."""
+    ref = AssetRef(uri="assets/step-1.png", mime="image/png")
+    wire = json.loads(ref.model_dump_json(by_alias=True))
+    assert wire == {"uri": "assets/step-1.png", "mime": "image/png"}
+
+    fixture = json.loads(FULL_DEMO_FIXTURE.read_text())
+    assert fixture["sections"][0]["steps"][0]["poster"] == wire
 
 
 def test_pre_existing_documents_without_a_rights_key_still_load():

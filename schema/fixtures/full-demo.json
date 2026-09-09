@@ -62,8 +62,7 @@
           },
           "poster": {
             "uri": "assets/step-1.png",
-            "mime": "image/png",
-            "rights": null
+            "mime": "image/png"
           },
           "next": null
         },
@@ -360,8 +359,7 @@
         },
         "audioRef": {
           "uri": "assets/narr-1.wav",
-          "mime": "audio/wav",
-          "rights": null
+          "mime": "audio/wav"
         },
         "tts": {
           "engine": "piper",
