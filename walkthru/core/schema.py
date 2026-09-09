@@ -237,11 +237,34 @@ Cue = Annotated[
 # --------------------------------------------------------------------------------------
 
 
+class AssetRights(_Base):
+    """The rights record for a third-party asset: may we ship it, and whom must we credit?
+
+    Field names mirror the ``illustration`` package's ``RIGHTS_FIELDS`` exactly, so a producer
+    that already holds an ``ImageResult``-shaped record can populate this one-for-one with no
+    rename table. Every field is optional and defaults to ``None`` — an asset with no rights
+    record simply omits this altogether (see :attr:`AssetRef.rights`), and ``cacheable`` being
+    ``bool | None`` keeps "not recorded" distinguishable from "recorded as not cacheable".
+    """
+
+    license: Optional[str] = None
+    license_url: Optional[str] = None
+    attribution: Optional[str] = None
+    source_page_url: Optional[str] = None
+    author: Optional[str] = None
+    author_url: Optional[str] = None
+    cacheable: Optional[bool] = None
+
+
 class AssetRef(_Base):
     """A reference to an external media asset (audio/video/image)."""
 
     uri: str
     mime: Optional[str] = None
+    #: Optional rights/attribution record for third-party media. ``None`` means "not recorded",
+    #: not "no rights apply" — a producer that knows the asset is third-party media should
+    #: always populate this rather than leaving it empty.
+    rights: Optional[AssetRights] = None
 
 
 class TTS(_Base):

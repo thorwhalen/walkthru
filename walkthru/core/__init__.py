@@ -37,6 +37,7 @@ from walkthru.core.events import (
 from walkthru.core.schema import (
     Anchor,
     AssetRef,
+    AssetRights,
     Beat,
     CalloutCue,
     CameraKeyframe,
@@ -110,6 +111,7 @@ __all__ = [
     "TTS",
     "WordTiming",
     "AssetRef",
+    "AssetRights",
     "demo_document_json_schema",
     # events
     "Event",

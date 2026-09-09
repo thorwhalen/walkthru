@@ -62,7 +62,8 @@
           },
           "poster": {
             "uri": "assets/step-1.png",
-            "mime": "image/png"
+            "mime": "image/png",
+            "rights": null
           },
           "next": null
         },
@@ -78,7 +79,16 @@
           "text": "Now let's save.",
           "poster": {
             "uri": "assets/beat-1.png",
-            "mime": "image/png"
+            "mime": "image/png",
+            "rights": {
+              "license": "cc-by-4.0",
+              "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+              "attribution": "Photo by Jane Doe",
+              "sourcePageUrl": "https://example.com/photos/beat-1",
+              "author": "Jane Doe",
+              "authorUrl": "https://example.com/authors/jane-doe",
+              "cacheable": true
+            }
           }
         },
         {
@@ -350,7 +360,8 @@
         },
         "audioRef": {
           "uri": "assets/narr-1.wav",
-          "mime": "audio/wav"
+          "mime": "audio/wav",
+          "rights": null
         },
         "tts": {
           "engine": "piper",

@@ -40,12 +40,115 @@
           ],
           "default": null,
           "title": "Mime"
+        },
+        "rights": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AssetRights"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
         "uri"
       ],
       "title": "AssetRef",
+      "type": "object"
+    },
+    "AssetRights": {
+      "additionalProperties": false,
+      "description": "The rights record for a third-party asset: may we ship it, and whom must we credit?\n\nField names mirror the ``illustration`` package's ``RIGHTS_FIELDS`` exactly, so a producer\nthat already holds an ``ImageResult``-shaped record can populate this one-for-one with no\nrename table. Every field is optional and defaults to ``None`` \u2014 an asset with no rights\nrecord simply omits this altogether (see :attr:`AssetRef.rights`), and ``cacheable`` being\n``bool | None`` keeps \"not recorded\" distinguishable from \"recorded as not cacheable\".",
+      "properties": {
+        "license": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "License"
+        },
+        "licenseUrl": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Licenseurl"
+        },
+        "attribution": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Attribution"
+        },
+        "sourcePageUrl": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourcepageurl"
+        },
+        "author": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Author"
+        },
+        "authorUrl": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Authorurl"
+        },
+        "cacheable": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cacheable"
+        }
+      },
+      "title": "AssetRights",
       "type": "object"
     },
     "Beat": {
