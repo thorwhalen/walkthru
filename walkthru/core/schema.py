@@ -31,7 +31,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_serializer
 from pydantic.alias_generators import to_camel
 
 Id = str
@@ -237,11 +237,50 @@ Cue = Annotated[
 # --------------------------------------------------------------------------------------
 
 
+class AssetRights(_Base):
+    """The rights record for a third-party asset: may we ship it, and whom must we credit?
+
+    Field names mirror ``illustration.persistence._CandidateRef`` (itself a mirror of
+    ``illustration.schema.RIGHTS_FIELDS``) exactly, so a producer that already holds one of those
+    records can populate this one-for-one with no rename table. Every field is optional and
+    defaults to ``None`` — an asset with no rights record simply omits this altogether (see
+    :attr:`AssetRef.rights`), and ``cacheable`` is ``bool | None`` (not illustration's
+    ``ImageResult.cacheable``, which is ``bool = False``) so "not recorded" stays distinguishable
+    from "recorded as not cacheable".
+    """
+
+    license: Optional[str] = None
+    license_url: Optional[str] = None
+    attribution: Optional[str] = None
+    source_page_url: Optional[str] = None
+    author: Optional[str] = None
+    author_url: Optional[str] = None
+    cacheable: Optional[bool] = None
+
+
 class AssetRef(_Base):
-    """A reference to an external media asset (audio/video/image)."""
+    """A reference to an external media asset (audio/video/image).
+
+    ``rights`` is omitted from serialized output entirely when ``None`` (a custom
+    :func:`~pydantic.model_serializer`, not ``exclude_none`` — every other field still serializes
+    its ``None``) so a rights-free ``AssetRef`` round-trips byte-identical to the shape this field
+    didn't exist, and stays loadable by a walkthru older than this field: only a document that
+    actually carries rights data needs a walkthru new enough to have this field.
+    """
 
     uri: str
     mime: Optional[str] = None
+    #: Optional rights/attribution record for third-party media. ``None`` means "not recorded",
+    #: not "no rights apply" — a producer that knows the asset is third-party media should
+    #: always populate this rather than leaving it empty.
+    rights: Optional[AssetRights] = None
+
+    @model_serializer(mode="wrap")
+    def _omit_rights_when_none(self, handler) -> dict:
+        data = handler(self)
+        if self.rights is None:
+            data.pop("rights", None)
+        return data
 
 
 class TTS(_Base):

@@ -35,6 +35,7 @@ Quickstart::
 from walkthru.core import (  # noqa: F401
     Anchor,
     AssetRef,
+    AssetRights,
     Beat,
     CalloutCue,
     CameraKeyframe,
@@ -131,6 +132,7 @@ __all__ = [
     "TTS",
     "WordTiming",
     "AssetRef",
+    "AssetRights",
     "Event",
     "Observer",
     "Outcome",

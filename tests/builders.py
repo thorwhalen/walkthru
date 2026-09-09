@@ -5,6 +5,7 @@ from __future__ import annotations
 from walkthru.core.schema import (
     Anchor,
     AssetRef,
+    AssetRights,
     Beat,
     CalloutCue,
     CameraKeyframe,
@@ -187,7 +188,19 @@ def make_full_demo() -> DemoDocument:
                         beat_kind="textCard",
                         timing=Timing(duration_ms=400),
                         text="Now let's save.",
-                        poster=AssetRef(uri="assets/beat-1.png", mime="image/png"),
+                        poster=AssetRef(
+                            uri="assets/beat-1.png",
+                            mime="image/png",
+                            rights=AssetRights(
+                                license="cc-by-4.0",
+                                license_url="https://creativecommons.org/licenses/by/4.0/",
+                                attribution="Photo by Jane Doe",
+                                source_page_url="https://example.com/photos/beat-1",
+                                author="Jane Doe",
+                                author_url="https://example.com/authors/jane-doe",
+                                cacheable=True,
+                            ),
+                        ),
                     ),
                     CommandStep(
                         id="step-2",

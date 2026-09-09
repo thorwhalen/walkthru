@@ -23,7 +23,7 @@
     },
     "AssetRef": {
       "additionalProperties": false,
-      "description": "A reference to an external media asset (audio/video/image).",
+      "description": "A reference to an external media asset (audio/video/image).\n\n``rights`` is omitted from serialized output entirely when ``None`` (a custom\n:func:`~pydantic.model_serializer`, not ``exclude_none`` \u2014 every other field still serializes\nits ``None``) so a rights-free ``AssetRef`` round-trips byte-identical to the shape this field\ndidn't exist, and stays loadable by a walkthru older than this field: only a document that\nactually carries rights data needs a walkthru new enough to have this field.",
       "properties": {
         "uri": {
           "title": "Uri",
@@ -40,12 +40,115 @@
           ],
           "default": null,
           "title": "Mime"
+        },
+        "rights": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AssetRights"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
         "uri"
       ],
       "title": "AssetRef",
+      "type": "object"
+    },
+    "AssetRights": {
+      "additionalProperties": false,
+      "description": "The rights record for a third-party asset: may we ship it, and whom must we credit?\n\nField names mirror ``illustration.persistence._CandidateRef`` (itself a mirror of\n``illustration.schema.RIGHTS_FIELDS``) exactly, so a producer that already holds one of those\nrecords can populate this one-for-one with no rename table. Every field is optional and\ndefaults to ``None`` \u2014 an asset with no rights record simply omits this altogether (see\n:attr:`AssetRef.rights`), and ``cacheable`` is ``bool | None`` (not illustration's\n``ImageResult.cacheable``, which is ``bool = False``) so \"not recorded\" stays distinguishable\nfrom \"recorded as not cacheable\".",
+      "properties": {
+        "license": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "License"
+        },
+        "licenseUrl": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Licenseurl"
+        },
+        "attribution": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Attribution"
+        },
+        "sourcePageUrl": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourcepageurl"
+        },
+        "author": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Author"
+        },
+        "authorUrl": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Authorurl"
+        },
+        "cacheable": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cacheable"
+        }
+      },
+      "title": "AssetRights",
       "type": "object"
     },
     "Beat": {

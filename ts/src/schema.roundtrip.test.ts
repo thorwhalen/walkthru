@@ -25,6 +25,38 @@ const loadFixture = (name: string): unknown =>
 
 const FIXTURES = ["minimal-demo.json", "full-demo.json"];
 
+// A field the Python side omits entirely when unset (currently only AssetRef.rights — see
+// walkthru/core/schema.py's model_serializer, added for thorwhalen/illustration#15) still has a
+// `.default(null)` in the codegened Zod, so parsing fills the key back in as `null`. That is not
+// coercion or loss — it normalizes an omitted optional to its explicit-null form — so it is the
+// one shape of divergence this reconciler allows: a key `parsed` has that `original` lacks is
+// fine only if Zod's value for it is `null`; anything else (added non-null data, changed values,
+// a key `original` has that `parsed` lacks) still fails the comparison below.
+function reconcileDefaultedNulls(parsed: unknown, original: unknown): unknown {
+  if (Array.isArray(original) && Array.isArray(parsed)) {
+    return parsed.map((p, i) => reconcileDefaultedNulls(p, original[i]));
+  }
+  if (
+    original !== null &&
+    typeof original === "object" &&
+    parsed !== null &&
+    typeof parsed === "object" &&
+    !Array.isArray(parsed)
+  ) {
+    const originalObj = original as Record<string, unknown>;
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (!(key in originalObj)) {
+        if (value !== null) return parsed; // real loss/coercion — let the outer toEqual catch it
+        continue; // an omitted optional, defaulted back to null — expected, not a divergence
+      }
+      result[key] = reconcileDefaultedNulls(value, originalObj[key]);
+    }
+    return result;
+  }
+  return parsed;
+}
+
 describe("Demo Document Python↔TS round-trip", () => {
   it.each(FIXTURES)("%s validates against the codegened Zod", (name) => {
     const doc = loadFixture(name);
@@ -34,9 +66,11 @@ describe("Demo Document Python↔TS round-trip", () => {
   it.each(FIXTURES)("%s survives parse with no coercion or loss", (name) => {
     const doc = loadFixture(name);
     // Parsing applies Zod defaults but must not alter a fully-specified Python document:
-    // parsed value === input === what Python re-validates. That is the round-trip.
+    // parsed value === input === what Python re-validates, modulo an omitted optional field
+    // (e.g. AssetRef.rights when unset) being filled back in as its explicit-null default —
+    // see reconcileDefaultedNulls above.
     const parsed = demoDocumentSchema.parse(doc);
-    expect(parsed).toEqual(doc);
+    expect(reconcileDefaultedNulls(parsed, doc)).toEqual(doc);
   });
 
   it("rejects a document that violates the schema", () => {
