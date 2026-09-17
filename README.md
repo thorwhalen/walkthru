@@ -90,6 +90,11 @@ captions is a three-step, fully composable pipeline:
 ```python
 from walkthru import realize_narration, pace_steps_to_narration, resolve_timeline
 from walkthru.adapters.export import narration_to_webvtt, narration_to_srt
+from walkthru.adapters.gif import GifRenderTarget  # screencast + camera -> GIF
+from walkthru.adapters.playwright import (
+    PlaywrightCommandPlayer,  # run a document's commands against a real page
+    install_synthetic_cursor,  # a visible pointer: screencasts do not record one
+)
 from walkthru.adapters.synth import MixingSynthesizer, mixing_duration_ms
 
 # 1. Synthesize each segment and time it from its own audio (anchor.duration_ms ← measured clip).

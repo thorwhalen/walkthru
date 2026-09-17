@@ -377,6 +377,54 @@ makes that a failing test rather than a promise, and §D11's table carries the b
 **"Appeared **and** settled" needed no new vocabulary:** `waitFor` observes arrival, the existing
 `holdAfterMs` covers the animation.
 
+## D14. The second `RenderTarget` is a GIF, and it re-frames rather than builds — **[call]**
+
+**Context:** PLAN §6 kept secondary render targets for "build only when real". Documenting an
+*interactive* HTML report made one real: a GIF plays inline in a README on GitHub and PyPI,
+where a video does not.
+
+**Decision:** `walkthru.adapters.gif` ships `GifRenderTarget` alongside reelee's. It is a
+different *kind* of target and the difference is worth naming: reelee **builds** a film from
+panels, this one **re-frames** a screencast the recorder already produced. The Demo Document
+supplies the camera track, the video supplies the pixels.
+
+- **ffmpeg is a system dependency, so there is no extra.** There is nothing for pip to install,
+  which would make an extra a lie. `check_ffmpeg()` raises with install commands instead of
+  letting a `FileNotFoundError` surface.
+- **All the meaning is pure.** `camera_segments` (time slicing), `crop_box` (geometry) and
+  `gif_filtergraph` (the filter string) are pure functions; `video_to_gif` is the only part that
+  shells out, and its `runner` is injected. The whole path is tested without ffmpeg installed.
+- **Aspect correction happens in `crop_box`, not in ffmpeg.** Every segment must end the same
+  size or `concat` refuses them, so focus rects are grown to the output aspect before cropping.
+  The same constraint is why each segment carries `setsar=1` — cropping different rects yields
+  different sample aspect ratios, and `concat` rejects those too. That one cost a failed render
+  to find and is pinned by a test.
+
+## D15. Playing and *seeing* a browser demo needed two adapters the Python side lacked — **[call]**
+
+**Context:** the Playwright adapters could locate, wait and record, but nothing could **act**:
+a Demo Document could describe a browser demo and walkthru could not play it without an
+app-specific executor. And Playwright's screencast — like every OS-level capture — omits the
+mouse pointer, so a demo whose point is *"hover this and watch"* recorded as a tooltip
+appearing for no visible reason.
+
+**Decision:** two small adapters, both duck-typed like their siblings.
+
+- **`PlaywrightCommandPlayer`** is the `CommandPlayer` for the commonest case, driving a page
+  directly. The id → handler table (`PAGE_COMMANDS`) is a keyword argument, so an app with its
+  own vocabulary reuses the player and supplies its own; the default for an unknown id is to
+  **raise**, because a silently skipped command produces a demo that is wrong in a way nobody
+  notices until they watch the video.
+- **`install_synthetic_cursor`** is the Python-side renderer for `CursorCue` — an inert
+  (`pointer-events: none`) init script that follows the real pointer, so the recording shows the
+  motion that caused each effect.
+
+**The sharp edge, recorded because it cost a silent failure:** the cursor image is carried as a
+**base64** data URI. A raw `utf8,<svg xmlns='http://…'>` URI terminates the surrounding
+JavaScript string at its first apostrophe, and an init script that fails to parse throws where
+nobody is watching — no exception reaches Python, the page renders normally, and the only
+symptom is a finished video with no cursor in it. `test_playwright_cursor.py` pins the shape.
+
 ---
 
 ## Open judgment calls deferred to issues (not yet decided)
