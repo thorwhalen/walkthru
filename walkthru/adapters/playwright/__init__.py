@@ -7,6 +7,16 @@ browser. The ``acture`` ``CommandPlayer`` and the driver.js ``CueRenderer`` are 
 web-first adapters and live on the TS side.
 """
 
+from walkthru.adapters.playwright.cursor import (
+    DEFAULT_CURSOR_SIZE,
+    cursor_script,
+    install_synthetic_cursor,
+)
+from walkthru.adapters.playwright.player import (
+    PAGE_COMMANDS,
+    PlaywrightCommandPlayer,
+    UnknownCommandError,
+)
 from walkthru.adapters.playwright.locator import (
     ElementNotFoundError,
     PlaywrightElementLocator,
@@ -26,6 +36,12 @@ from walkthru.adapters.playwright.recorder import (
 )
 
 __all__ = [
+    "DEFAULT_CURSOR_SIZE",
+    "cursor_script",
+    "install_synthetic_cursor",
+    "PAGE_COMMANDS",
+    "PlaywrightCommandPlayer",
+    "UnknownCommandError",
     "PlaywrightElementLocator",
     "ElementNotFoundError",
     "build_locator",
