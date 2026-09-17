@@ -1,7 +1,10 @@
 """The Playwright CommandPlayer: the vocabulary, the table seam, and unknown commands.
 
-Driven against a fake page, so no browser is needed.
+Driven against a fake page, so no browser is needed. Async entry points are run with
+``asyncio.run`` rather than a pytest plugin, matching the rest of the suite.
 """
+
+import asyncio
 
 import pytest
 
@@ -65,7 +68,10 @@ def page():
     return FakePage()
 
 
-@pytest.mark.asyncio
+def play(page, command, **kwargs):
+    return asyncio.run(PlaywrightCommandPlayer(page, **kwargs).play(command))
+
+
 @pytest.mark.parametrize(
     "command,expected",
     [
@@ -78,48 +84,38 @@ def page():
         (Command(id="page.scroll", params={"selector": "#x"}), ("scroll_into_view", "#x")),
     ],
 )
-async def test_the_default_vocabulary_reaches_the_page(page, command, expected):
-    await PlaywrightCommandPlayer(page).play(command)
+def test_the_default_vocabulary_reaches_the_page(page, command, expected):
+    play(page, command)
     assert page.calls == [expected]
 
 
-@pytest.mark.asyncio
-async def test_extra_params_pass_through(page):
+def test_extra_params_pass_through(page):
     """`timeout`, `force` and friends belong to the caller, not to the adapter."""
-    await PlaywrightCommandPlayer(page).play(
-        Command(id="page.hover", params={"selector": "mark", "timeout": 5000})
-    )
+    play(page, Command(id="page.hover", params={"selector": "mark", "timeout": 5000}))
     assert page.calls == [("hover", "mark", {"timeout": 5000})]
 
 
-@pytest.mark.asyncio
-async def test_set_viewport_coerces_to_the_playwright_shape(page):
-    await PlaywrightCommandPlayer(page).play(
-        Command(id="page.set_viewport", params={"width": "900", "height": "600"})
-    )
+def test_set_viewport_coerces_to_the_playwright_shape(page):
+    play(page, Command(id="page.set_viewport", params={"width": "900", "height": "600"}))
     assert page.calls == [("viewport", {"width": 900, "height": 600})]
 
 
-@pytest.mark.asyncio
-async def test_wait_actually_waits(page):
+def test_wait_actually_waits(page):
     import time
 
     start = time.perf_counter()
-    await PlaywrightCommandPlayer(page).play(Command(id="page.wait", params={"ms": 60}))
+    play(page, Command(id="page.wait", params={"ms": 60}))
     assert time.perf_counter() - start >= 0.05
     assert page.calls == []
 
 
-@pytest.mark.asyncio
-async def test_an_unknown_command_raises_and_names_what_it_knows(page):
+def test_an_unknown_command_raises_and_names_what_it_knows(page):
     with pytest.raises(UnknownCommandError, match="page.hover"):
-        await PlaywrightCommandPlayer(page).play(Command(id="app.nope"))
+        play(page, Command(id="app.nope"))
 
 
-@pytest.mark.asyncio
-async def test_unknown_commands_can_be_skipped_deliberately(page):
-    player = PlaywrightCommandPlayer(page, on_unknown="skip")
-    assert await player.play(Command(id="app.nope")) is None
+def test_unknown_commands_can_be_skipped_deliberately(page):
+    assert play(page, Command(id="app.nope"), on_unknown="skip") is None
     assert page.calls == []
 
 
@@ -128,8 +124,7 @@ def test_on_unknown_is_validated(page):
         PlaywrightCommandPlayer(page, on_unknown="explode")
 
 
-@pytest.mark.asyncio
-async def test_the_command_table_is_a_seam(page):
+def test_the_command_table_is_a_seam(page):
     """An app extends the vocabulary without the adapter knowing about it."""
     seen = []
 
@@ -137,10 +132,13 @@ async def test_the_command_table_is_a_seam(page):
         seen.append(params)
         return "saved"
 
-    player = PlaywrightCommandPlayer(page, commands={**PAGE_COMMANDS, "app.save": save})
-    assert await player.play(Command(id="app.save", params={"path": "/tmp/x"})) == "saved"
+    commands = {**PAGE_COMMANDS, "app.save": save}
+    player = PlaywrightCommandPlayer(page, commands=commands)
+
+    assert asyncio.run(player.play(Command(id="app.save", params={"path": "/tmp/x"}))) == "saved"
     assert seen == [{"path": "/tmp/x"}]
-    await player.play(Command(id="page.hover", params={"selector": "m"}))  # still works
+
+    asyncio.run(player.play(Command(id="page.hover", params={"selector": "m"})))
     assert page.calls == [("hover", "m", {})]
 
 

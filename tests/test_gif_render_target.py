@@ -3,6 +3,7 @@
 Everything that carries meaning is a pure function, so none of this needs ffmpeg.
 """
 
+import asyncio
 import json
 import subprocess
 
@@ -197,13 +198,12 @@ def _doc_with_camera(keys):
     )
 
 
-@pytest.mark.asyncio
-async def test_render_target_applies_the_documents_camera_track(tmp_path):
+def test_render_target_applies_the_documents_camera_track(tmp_path):
     runner = FakeRunner()
     doc = _doc_with_camera([(0, 1.0), (2000, 2.0)])
     target = GifRenderTarget("in.webm", tmp_path / "out.gif", width=640, runner=runner)
 
-    asset = await target.export(doc)
+    asset = asyncio.run(target.export(doc))
 
     assert asset.mime == "image/gif"
     graph = runner.calls[-1][runner.calls[-1].index("-filter_complex") + 1]
@@ -212,10 +212,9 @@ async def test_render_target_applies_the_documents_camera_track(tmp_path):
     assert "crop=640:360:320:180" in graph, "the second is a centred 2x zoom"
 
 
-@pytest.mark.asyncio
-async def test_a_document_without_a_camera_renders_the_whole_video(tmp_path):
+def test_a_document_without_a_camera_renders_the_whole_video(tmp_path):
     runner = FakeRunner()
     doc = _doc_with_camera([])
-    await GifRenderTarget("in.webm", tmp_path / "out.gif", runner=runner).export(doc)
+    asyncio.run(GifRenderTarget("in.webm", tmp_path / "out.gif", runner=runner).export(doc))
     graph = runner.calls[-1][runner.calls[-1].index("-filter_complex") + 1]
     assert graph.count("crop=") == 1 and "concat=n=1" in graph

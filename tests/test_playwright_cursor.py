@@ -6,6 +6,7 @@ the only symptom is a finished video with no cursor in it. That is exactly how t
 version of this shipped, so the shape of the bug is pinned here.
 """
 
+import asyncio
 import re
 import shutil
 import subprocess
@@ -66,9 +67,8 @@ def test_the_script_is_idempotent():
     assert "__walkthruCursor" in cursor_script()
 
 
-@pytest.mark.asyncio
-async def test_install_adds_exactly_one_init_script():
+def test_install_adds_exactly_one_init_script():
     page = FakePage()
-    await install_synthetic_cursor(page)
+    asyncio.run(install_synthetic_cursor(page))
     assert len(page.scripts) == 1
     assert f"width:{DEFAULT_CURSOR_SIZE}px" in page.scripts[0]
