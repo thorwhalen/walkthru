@@ -46,7 +46,7 @@ from typing import Callable, Optional, Union
 
 from reelee.storyboard_export import PanelView
 
-from walkthru.core.schema import AssetRef, DemoDocument
+from walkthru.core.schema import AssetRef, DemoDocument, Rect
 from walkthru.core.timeline import (
     ResolvedCamera,
     ResolvedNarration,
@@ -61,6 +61,8 @@ AssetResolver = Callable[[Optional[AssetRef]], Optional[Path]]
 FilmRenderer = Callable[..., Path]
 #: Assembles per-panel ``(audio, duration_s)`` into one film-long audio track (or ``None``).
 AudioAssembler = Callable[..., Optional[Path]]
+#: Builds the ``burns.BurnsPath`` one panel's camera follows (see :func:`index_path_builder`).
+PathBuilder = Callable[["PanelPlan"], object]
 
 DEFAULT_FPS = 30
 DEFAULT_ZOOM = 1.10
@@ -68,6 +70,22 @@ DEFAULT_PAN = 0.03
 DEFAULT_STYLE = "push"
 #: Per-panel floor screen time (seconds) — a still that flashes by reads as a glitch.
 DEFAULT_MIN_DURATION_S = 2.0
+
+
+@dataclass(frozen=True)
+class CameraMove:
+    """One panel's camera intent in burns' vocabulary: a named move, how close, and onto what.
+
+    Derived from the step's camera track by :func:`camera_move` — the walkthru SSOT stays a
+    ``CameraKeyframe`` (focus rect + zoom); this is its projection onto the move names burns and
+    braidio share (``burns.MOVES``), so a film rendered from it and a panel record written from it
+    (:mod:`walkthru.ecosystem.reelee.production`) describe the same camera.
+    """
+
+    move: str
+    zoom: float
+    focus: Optional[Rect] = None
+    easing: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -83,6 +101,7 @@ class PanelPlan:
     view: PanelView
     duration_s: float
     audio_path: Optional[Path]
+    move: Optional[CameraMove] = None
 
 
 # --------------------------------------------------------------------------------------
@@ -140,6 +159,50 @@ def _camera_hint(narration: list[ResolvedCamera]) -> str:
         if zoom < 1.0:
             return "pull out"
     return ""
+
+
+def camera_move(camera: Sequence[ResolvedCamera]) -> Optional[CameraMove]:
+    """Project a step's camera keyframes onto one named move (``None`` when there are none).
+
+    The first keyframe decides, as with :func:`_camera_hint`: ``zoom > 1`` pushes in to that
+    magnification, ``zoom < 1`` pulls out from ``1 / zoom``, and ``zoom == 1`` holds still. The
+    keyframe's ``focus`` (CSS pixels) is what the camera closes on.
+
+    >>> from walkthru.core.schema import Anchor, CameraKeyframe
+    >>> from walkthru.core.timeline import ResolvedCamera
+    >>> kf = CameraKeyframe(id="c", anchor=Anchor(step_id="s"), zoom=0.8)
+    >>> camera_move([ResolvedCamera(keyframe_id="c", at_ms=0, keyframe=kf)]).move
+    'pull_out'
+    """
+    if not camera:
+        return None
+    keyframe = camera[0].keyframe
+    if keyframe.zoom > 1.0:
+        move, zoom = "push_in", keyframe.zoom
+    elif keyframe.zoom < 1.0:
+        move, zoom = "pull_out", 1.0 / keyframe.zoom
+    else:
+        move, zoom = "hold", 1.0
+    return CameraMove(move=move, zoom=zoom, focus=keyframe.focus, easing=keyframe.easing)
+
+
+def normalized_focus(
+    rect: Rect, image_size: tuple[int, int], *, device_scale_factor: float = 1.0
+) -> tuple[float, float, float, float]:
+    """A CSS-pixel ``rect`` as ``(x, y, w, h)`` fractions of an image, clamped into it.
+
+    ``device_scale_factor`` is the capture's pixels per CSS pixel (2 on a retina screenshot).
+
+    >>> normalized_focus(Rect(x=480, y=270, width=960, height=540), (1920, 1080))
+    (0.25, 0.25, 0.5, 0.5)
+    """
+    width, height = image_size
+    sx, sy = device_scale_factor / width, device_scale_factor / height
+    x0 = min(max(rect.x * sx, 0.0), 1.0)
+    y0 = min(max(rect.y * sy, 0.0), 1.0)
+    x1 = min(max((rect.x + rect.width) * sx, 0.0), 1.0)
+    y1 = min(max((rect.y + rect.height) * sy, 0.0), 1.0)
+    return (x0, y0, x1 - x0, y1 - y0)
 
 
 def _notes(step: ResolvedStep) -> str:
@@ -237,6 +300,7 @@ def timeline_to_plans(
                 ),
                 duration_s=max(min_duration_s, occupancy_s),
                 audio_path=_panel_audio(segs, audio_resolver),
+                move=camera_move(camera.get(step.step_id, [])),
             )
         )
     return plans
@@ -259,6 +323,71 @@ def _default_audio_assembler() -> AudioAssembler:
     return assemble_audio_track
 
 
+def index_path_builder(
+    *,
+    style: str = DEFAULT_STYLE,
+    zoom: float = DEFAULT_ZOOM,
+    pan: float = DEFAULT_PAN,
+    easing: str = "linear",
+) -> PathBuilder:
+    """The default motion: :func:`burns.ken_burns_path` by panel position, ignoring the camera track.
+
+    Every panel gets the same ``style``/``zoom``/``pan``, varied only by its index — what this
+    target has always rendered. Use :func:`camera_path_builder` for motion the document authors.
+    """
+    from burns import ken_burns_path
+
+    def build(plan: PanelPlan):
+        return ken_burns_path(plan.view.index, style=style, zoom=zoom, pan=pan, easing=easing)
+
+    return build
+
+
+def camera_path_builder(
+    *,
+    default_move: CameraMove = CameraMove(move="hold", zoom=1.0),
+    aspect: Optional[float] = None,
+    easing: str = "ease-in-out",
+    device_scale_factor: float = 1.0,
+) -> PathBuilder:
+    """Motion from the document's camera track, resolved by :func:`burns.resolve_move`.
+
+    Each panel's :class:`CameraMove` (see :func:`camera_move`) is framed against its own image —
+    the focus rect closes the camera on the element a step is about. ``resolve_move`` is the one
+    resolver braidio's ``video_cut.render`` and the studio's move preview also call, so a panel
+    record carrying the same move/zoom/focus describes exactly this film
+    (:func:`walkthru.ecosystem.reelee.production.to_production_manifest` writes those records).
+
+    Args:
+        default_move: the move for a panel with no camera keyframe.
+        aspect: the film's ``width / height``; ``None`` frames for each image's own aspect.
+        easing: used when a keyframe names none.
+        device_scale_factor: pixels per CSS pixel in the posters (focus rects are CSS pixels).
+    """
+    from burns import resolve_move
+    from PIL import Image
+
+    def build(plan: PanelPlan):
+        intent = plan.move or default_move
+        focus = None
+        if intent.focus is not None:
+            with Image.open(plan.view.image_path) as img:
+                size = img.size
+            focus = normalized_focus(
+                intent.focus, size, device_scale_factor=device_scale_factor
+            )
+        return resolve_move(
+            intent.move,
+            image=plan.view.image_path,
+            aspect=aspect,
+            zoom=intent.zoom,
+            focus=focus,
+            easing=intent.easing or easing,
+        )
+
+    return build
+
+
 def render_plans(
     plans: Sequence[PanelPlan],
     out: Union[str, Path],
@@ -270,6 +399,8 @@ def render_plans(
     ease: bool = False,
     film_renderer: Optional[FilmRenderer] = None,
     audio_assembler: Optional[AudioAssembler] = None,
+    path_builder: Optional[PathBuilder] = None,
+    audio_out: Optional[Union[str, Path]] = None,
 ) -> Path:
     """Render ``plans`` into one continuous Ken Burns mp4 at ``out``.
 
@@ -289,6 +420,11 @@ def render_plans(
         ease: ``True`` for slow-in/slow-out easing, ``False`` for constant velocity.
         film_renderer: renders the panels (+ optional audio) into one mp4; injected for testing.
         audio_assembler: assembles per-panel audio into one track; injected for testing.
+        path_builder: the camera strategy, ``PanelPlan -> BurnsPath``. ``None`` is
+            :func:`index_path_builder` over ``style``/``zoom``/``pan``/``ease``;
+            :func:`camera_path_builder` follows the document's camera track instead.
+        audio_out: keep the assembled film-long audio here (by default it is a temporary file).
+            A caller that ships the film's recording beside it (a commentary production) needs it.
 
     Returns:
         The path to the written mp4.
@@ -296,8 +432,6 @@ def render_plans(
     Raises:
         ValueError: when no panel has a resolvable image (a Ken Burns film needs panel images).
     """
-    from burns import ken_burns_path
-
     out_path = Path(out)
     renderable = [p for p in plans if p.view.image_path is not None]
     if not renderable:
@@ -305,29 +439,28 @@ def render_plans(
             "reelee render target: no panel has a resolvable poster image — a Ken Burns "
             "film needs panel images (give steps a `poster` AssetRef that resolves locally)."
         )
-
     film_renderer = film_renderer or _default_film_renderer()
-    easing = "ease-in-out" if ease else "linear"
+    path_builder = path_builder or index_path_builder(
+        style=style, zoom=zoom, pan=pan, easing="ease-in-out" if ease else "linear"
+    )
     panels = [
-        (
-            plan.view.image_path,
-            ken_burns_path(
-                plan.view.index, style=style, zoom=zoom, pan=pan, easing=easing
-            ),
-            plan.duration_s,
-        )
+        (plan.view.image_path, path_builder(plan), plan.duration_s)
         for plan in renderable
     ]
     audio_segments = [(plan.audio_path, plan.duration_s) for plan in renderable]
-
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    if any(audio is not None for audio, _ in audio_segments):
-        assembler = audio_assembler or _default_audio_assembler()
-        with tempfile.TemporaryDirectory(prefix="walkthru_reelee_") as tmp:
-            audio_path = assembler(audio_segments, output=Path(tmp) / "film_audio.wav")
-            film_renderer(panels, saveas=out_path, fps=fps, audio_path=audio_path)
-    else:
+    if not any(audio is not None for audio, _ in audio_segments):
         film_renderer(panels, saveas=out_path, fps=fps, audio_path=None)
+        return out_path
+    assembler = audio_assembler or _default_audio_assembler()
+    if audio_out is not None:
+        Path(audio_out).parent.mkdir(parents=True, exist_ok=True)
+        audio_path = assembler(audio_segments, output=Path(audio_out))
+        film_renderer(panels, saveas=out_path, fps=fps, audio_path=audio_path)
+        return out_path
+    with tempfile.TemporaryDirectory(prefix="walkthru_reelee_") as tmp:
+        audio_path = assembler(audio_segments, output=Path(tmp) / "film_audio.wav")
+        film_renderer(panels, saveas=out_path, fps=fps, audio_path=audio_path)
     return out_path
 
 
@@ -345,6 +478,8 @@ def render_demo_video(
     ease: bool = False,
     film_renderer: Optional[FilmRenderer] = None,
     audio_assembler: Optional[AudioAssembler] = None,
+    path_builder: Optional[PathBuilder] = None,
+    audio_out: Optional[Union[str, Path]] = None,
 ) -> Path:
     """Compose ``document`` onto absolute time and render it as a Ken Burns mp4 at ``out``.
 
@@ -368,6 +503,8 @@ def render_demo_video(
         ease=ease,
         film_renderer=film_renderer,
         audio_assembler=audio_assembler,
+        path_builder=path_builder,
+        audio_out=audio_out,
     )
 
 
@@ -385,6 +522,7 @@ class ReeleeRenderTarget:
             :func:`timeline_to_plans`).
         poster_resolver, audio_resolver: map an :class:`AssetRef` to a local file.
         film_renderer, audio_assembler: injected render seams (default reelee/mixing).
+        path_builder: the camera strategy (see :func:`render_plans`).
     """
 
     def __init__(
@@ -401,8 +539,10 @@ class ReeleeRenderTarget:
         audio_resolver: AssetResolver = default_asset_resolver,
         film_renderer: Optional[FilmRenderer] = None,
         audio_assembler: Optional[AudioAssembler] = None,
+        path_builder: Optional[PathBuilder] = None,
     ):
         self._out_dir = Path(out_dir)
+        self._path_builder = path_builder
         self._fps = fps
         self._zoom = zoom
         self._pan = pan
@@ -429,5 +569,6 @@ class ReeleeRenderTarget:
             ease=self._ease,
             film_renderer=self._film_renderer,
             audio_assembler=self._audio_assembler,
+            path_builder=self._path_builder,
         )
         return AssetRef(uri=str(out_path), mime="video/mp4")

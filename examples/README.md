@@ -41,3 +41,12 @@ Playwright `page`; the capture stream by an `ActionRecorder` tapping the live co
 JSON hand-off by the [`reelee` render target](../walkthru/ecosystem/reelee/render_target.py)
 for an actual Ken Burns video. Swapping any of them requires no change to the core or to these
 documents — that is the whole point of the firewall (see [`PLAN.md`](../PLAN.md) §2, §3.4).
+
+## `reelee_studio_tour/` — a real tour, rendered as a commentary film
+
+Not pure core: it drives a live reelee-studio in Chrome through the studio's acture commands, voices
+the narration with ElevenLabs, renders with the reelee Ken Burns target (the camera closing on what
+each step is about), and packages the result as a commentary production that opens in the studio it
+tours. Its authoring half, `studio_tour.py`, is pure core and runs in the test suite. See its
+[README](./reelee_studio_tour/README.md).
+
