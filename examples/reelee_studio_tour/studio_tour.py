@@ -21,6 +21,7 @@ Command ids come in two families:
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
@@ -87,6 +88,10 @@ TOUR_COMMANDS = frozenset(
         "tour.wait",
     }
 )
+
+#: Words the tour never says. The product never labels a cost as "free": when nothing costs it
+#: says nothing, and when something does it shows the estimate (reelee-web#372).
+BANNED_PHRASES = ("free", "costs nothing", "no charge", "no cost", "for nothing")
 
 #: Nominal screen time per shot; narration-led pacing stretches it to fit what is said.
 DEFAULT_SHOT_MS = 4000
@@ -503,8 +508,8 @@ SHOTS: tuple[Shot, ...] = (
         "together-again",
         "tour.scroll",
         "One last thing. Change something, and this card tells you what making the film "
-        "again involves. Here, only words changed, so it's seconds, and free. This one came "
-        "in already finished, though, so Reelee can show it, but can't make it again.",
+        "again involves. Here, only the words changed, so it's quick. This one came in "
+        "already finished, though, so Reelee can show it, but can't make it again.",
         params={"to": "Putting it together again"},
         focus=TOGETHER_AGAIN,
         point=TOGETHER_AGAIN,
@@ -556,6 +561,14 @@ def build_document(
     unknown = sorted({shot.command for shot in shots} - STUDIO_COMMANDS - TOUR_COMMANDS)
     if unknown:
         raise ValueError(f"unknown command id(s) in the tour: {', '.join(unknown)}")
+    said = [
+        (shot.id, phrase)
+        for shot in shots
+        for phrase in BANNED_PHRASES
+        if re.search(rf"\b{re.escape(phrase)}\b", shot.say, re.IGNORECASE)
+    ]
+    if said:
+        raise ValueError(f"the tour says a banned cost word: {said}")
     sections: list[Section] = []
     for shot in shots:
         if not sections or sections[-1].id != shot.section:

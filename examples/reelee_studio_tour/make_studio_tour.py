@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -255,6 +256,14 @@ async def capture(
                 focus_rects[shot.id] = focus
                 path = shots_dir / f"{shot.id}.png"
                 await page.screenshot(path=str(path))
+                # the words on screen, beside the picture, so copy can be audited with grep
+                words = await page.evaluate("document.body.innerText")
+                path.with_suffix(".txt").write_text(words)
+                for phrase in studio_tour.BANNED_PHRASES:
+                    if re.search(rf"\b{re.escape(phrase)}\b", words, re.IGNORECASE):
+                        print(
+                            f"  ! shot {shot.id}: the studio shows {phrase!r} on screen"
+                        )
                 event.step.poster = AssetRef(uri=str(path), mime="image/png")
                 print(f"  shot {shot.id}")
 
