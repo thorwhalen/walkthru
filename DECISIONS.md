@@ -425,6 +425,36 @@ JavaScript string at its first apostrophe, and an init script that fails to pars
 nobody is watching — no exception reaches Python, the page renders normally, and the only
 symptom is a finished video with no cursor in it. `test_playwright_cursor.py` pins the shape.
 
+## D16. A rendered tour becomes a commentary production, and its camera follows the camera track — **[call]**
+
+**Context:** a narrated tour of reelee-studio's Commentary screen had to be a *real commentary
+film*, so that it opens and can be edited on the screen it tours
+(`examples/reelee_studio_tour/`). A reelee Ken Burns film already has that shape: pictures over a
+spoken recording. Two things were missing.
+
+**Decision:**
+
+- **The camera track drives the motion, through an injected strategy.** `render_plans` takes a
+  `path_builder` (`PanelPlan -> BurnsPath`). The default, `index_path_builder`, is exactly what
+  the target always rendered: one style/zoom per film, varied by position. `camera_path_builder`
+  projects each step's `CameraKeyframe` onto a named burns move (`camera_move`: zoom > 1 pushes
+  in, < 1 pulls out, 1 holds). It frames the move against the poster with `burns.resolve_move`,
+  the resolver braidio's `video_cut.render` and the studio's move preview also call. The camera
+  closes on the element a step is about (its focus rect, measured at capture). The default stays
+  the old behaviour: an existing test pins it, and a changed default would silently re-frame
+  every film already made with this target.
+- **`to_production_manifest` writes braidio's `ProductionManifest` from the same plans.** Panel
+  spans are the running sum of plan durations, moves are the plans' `CameraMove`s, and a
+  narration beat starts with its panel. Nothing is re-estimated, so the records describe the film
+  that was rendered. It declares `moves: "rendered"` (braidio's importer otherwise rewrites every
+  move as `push_in`, a rule written for three legacy films whose recorded moves were never
+  realised) and imports nothing from braidio, so it is testable wherever `reelee` imports.
+
+**The sharp edge:** those panel records are true only if the film was rendered with
+`camera_path_builder`. Render with the index builder and they describe a film nobody made. The
+docstring says so. The alternative, having `to_production_manifest` render the film itself,
+would merge two stages that re-run at different costs (a manifest is free, a render is minutes).
+
 ---
 
 ## Open judgment calls deferred to issues (not yet decided)

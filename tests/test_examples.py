@@ -23,6 +23,8 @@ EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
     [
         ("generative_demo.py", "Outcome: ok=True, steps_run=2"),
         ("capture_demo.py", "Round-trip verified"),
+        # the authoring half of the studio tour is pure core; capturing it needs a live studio
+        ("reelee_studio_tour/studio_tour.py", "shots in 7 sections"),
     ],
 )
 def test_example_runs(script: str, sentinel: str) -> None:
