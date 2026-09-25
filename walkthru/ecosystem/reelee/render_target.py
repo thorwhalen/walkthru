@@ -213,7 +213,9 @@ def camera_move(camera: Sequence[ResolvedCamera]) -> Optional[CameraMove]:
         move, zoom = "pull_out", 1.0 / keyframe.zoom
     else:
         move, zoom = "hold", 1.0
-    return CameraMove(move=move, zoom=zoom, focus=keyframe.focus, easing=keyframe.easing)
+    return CameraMove(
+        move=move, zoom=zoom, focus=keyframe.focus, easing=keyframe.easing
+    )
 
 
 def normalized_focus(
@@ -368,7 +370,9 @@ def index_path_builder(
     from burns import ken_burns_path
 
     def build(plan: PanelPlan):
-        return ken_burns_path(plan.view.index, style=style, zoom=zoom, pan=pan, easing=easing)
+        return ken_burns_path(
+            plan.view.index, style=style, zoom=zoom, pan=pan, easing=easing
+        )
 
     return build
 
