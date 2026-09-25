@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Mapping, Optional
@@ -57,6 +58,15 @@ SETTLE_MS = 900
 BREATH_MS = 450
 
 PRODUCTION_SLUG = "commentary-tour"
+
+
+def _framing():
+    """How the film frames its shots — handed to BOTH the render and the manifest (see D16)."""
+    from walkthru.ecosystem.reelee import Framing
+
+    return Framing(aspect=VIEWPORT["width"] / VIEWPORT["height"])
+
+
 RIGHTS = {
     "position": "private",
     "why": (
@@ -230,13 +240,19 @@ async def capture(
                 await page.wait_for_timeout(
                     SETTLE_MS if shot.settle_ms is None else shot.settle_ms
                 )
-                focus_rects[shot.id] = (
+                focus = (
                     await locator.bounds(Target(primary=shot.focus))
                     if shot.focus is not None
                     else Rect(
                         x=0, y=0, width=VIEWPORT["width"], height=VIEWPORT["height"]
                     )
                 )
+                if not _on_screen(focus):
+                    # found now rather than as a burns error after the narration is paid for
+                    raise RuntimeError(
+                        f"shot {shot.id}: its focus {shot.focus} is off screen ({focus})"
+                    )
+                focus_rects[shot.id] = focus
                 path = shots_dir / f"{shot.id}.png"
                 await page.screenshot(path=str(path))
                 event.step.poster = AssetRef(uri=str(path), mime="image/png")
@@ -256,6 +272,13 @@ async def capture(
     ]
     _save(doc, work_dir / "captured.json")
     return doc
+
+
+def _on_screen(rect: Rect, *, min_px: float = 8.0) -> bool:
+    """Does ``rect`` show at least a sliver of itself in the viewport?"""
+    visible_w = min(rect.x + rect.width, VIEWPORT["width"]) - max(rect.x, 0)
+    visible_h = min(rect.y + rect.height, VIEWPORT["height"]) - max(rect.y, 0)
+    return visible_w >= min_px and visible_h >= min_px
 
 
 # --------------------------------------------------------------------------------------
@@ -306,18 +329,30 @@ def render(work_dir: Path) -> Path:
         _plans(doc),
         film,
         fps=FPS,
-        path_builder=camera_path_builder(aspect=VIEWPORT["width"] / VIEWPORT["height"]),
+        path_builder=camera_path_builder(_framing()),
         audio_out=work_dir / "recording.wav",
     )
     return film
+
+
+#: What each section's screenshots show, as the picture's label in the studio.
+SECTION_SUBJECTS = {
+    "watch": "The Commentary screen, Watch tab",
+    "storybook": "The Commentary screen, Storybook tab",
+    "pictures": "The Commentary screen, Pictures tab",
+    "moment": "One moment of the film, open",
+    "picker": "Pick another picture",
+    "moment-more": "One moment of the film, open",
+    "wrap": "The Commentary screen",
+}
 
 
 def _still_fields(plan) -> dict[str, Any]:
     shot = studio_tour.shots_by_id()[plan.view.panel_id]
     return {
         "labelled": True,
-        "subject": f"Reelee studio — {shot.section.replace('-', ' ')}",
-        "title": f"Commentary screen: {shot.id.replace('-', ' ')}",
+        "subject": SECTION_SUBJECTS.get(shot.section, "The Commentary screen"),
+        "title": f"Commentary screen tour: {shot.id.replace('-', ' ')}",
         "attribution": "Screenshot of Reelee studio, captured by walkthru",
         "note": "Shows the actually-romantic production; its pictures are credited there.",
     }
@@ -327,16 +362,34 @@ def manifest(work_dir: Path) -> Path:
     from walkthru.ecosystem.reelee import to_production_manifest
 
     doc = _load(work_dir / "narrated.json")
+    # braidio serves an episode as audio/mpeg; the render's recording is PCM WAV. Same audio.
+    recording = work_dir / "recording.mp3"
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-y",
+            "-i",
+            str(work_dir / "recording.wav"),
+            "-codec:a",
+            "libmp3lame",
+            "-b:a",
+            "192k",
+            str(recording),
+        ],
+        check=True,
+    )
     data = to_production_manifest(
         _plans(doc),
         production=PRODUCTION_SLUG,
         title=studio_tour.TOUR_TITLE,
         source_dir=work_dir,
         film=work_dir / "film.mp4",
-        audio=work_dir / "recording.wav",
+        audio=recording,
         rights=RIGHTS,
-        size=(VIEWPORT["width"], VIEWPORT["height"]),
         fps=FPS,
+        framing=_framing(),
         still_fields=_still_fields,
         voice={"voice_id": VOICE_ID, "model_id": MODEL_ID},
         cut_label="tour",

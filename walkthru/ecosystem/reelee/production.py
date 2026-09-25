@@ -13,8 +13,9 @@ film's own, not a second estimate of them:
 - its ``move``/``zoom``/``focus`` is the plan's :class:`CameraMove`, the intent
   :func:`camera_path_builder` handed to ``burns.resolve_move`` (the resolver braidio's own
   render and the studio's move preview call). Render with a different ``path_builder`` and these
-  records describe a film you did not make — so this function refuses to guess: a plan without a
-  move is written as ``default_move``, which must be the one the render used;
+  records describe a film you did not make. The render and this function take the **same**
+  :class:`Framing` (default move, aspect, pixel density, easing), so they cannot drift apart,
+  and an easing no panel record can carry is refused;
 - a narration beat starts where its panel starts, which is where the audio assembler put it.
 
 The manifest is a plain ``dict`` in braidio's wire shape; nothing here imports braidio, so the
@@ -29,7 +30,8 @@ from pathlib import Path
 from typing import Any, Optional, Union
 
 from walkthru.ecosystem.reelee.render_target import (
-    CameraMove,
+    DEFAULT_EASING,
+    Framing,
     PanelPlan,
     normalized_focus,
 )
@@ -71,6 +73,15 @@ def _media_duration_s(path: Path) -> float:
     return float(Audio(str(path)).full_duration)
 
 
+def _film_size(
+    first_image: tuple[int, int], aspect: Optional[float]
+) -> tuple[int, int]:
+    """The film's frame size, decided exactly as ``burns.ken_burns_film`` decides it."""
+    from burns.render import output_size_for
+
+    return output_size_for(*first_image, output_aspect=aspect)
+
+
 def _label(text: str, limit: int) -> str:
     return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
 
@@ -84,10 +95,8 @@ def to_production_manifest(
     film: Union[str, Path],
     audio: Union[str, Path],
     rights: Mapping[str, str],
-    size: tuple[int, int],
     fps: int,
-    default_move: CameraMove = CameraMove(move="hold", zoom=1.0),
-    device_scale_factor: float = 1.0,
+    framing: Framing = Framing(),
     still_fields: StillFields = _default_still_fields,
     voice: Optional[Mapping[str, str]] = None,
     cut_label: str = "v1",
@@ -95,6 +104,9 @@ def to_production_manifest(
     gaps: Sequence[str] = (),
     duration_s: Callable[[Path], float] = _media_duration_s,
     image_size: Callable[[Path], tuple[int, int]] = _image_size,
+    film_size: Callable[
+        [tuple[int, int], Optional[float]], tuple[int, int]
+    ] = _film_size,
     label_chars: int = DEFAULT_LABEL_CHARS,
 ) -> dict[str, Any]:
     """The braidio ``ProductionManifest`` (as a dict) for a film rendered from ``plans``.
@@ -109,16 +121,19 @@ def to_production_manifest(
         audio: the film-long recording (``render_plans(..., audio_out=...)``).
         rights: braidio's ``RightsPosition``: ``position`` (private | unlisted | public), ``why``,
             and optionally ``measured``.
-        size, fps: the film's delivery size and frame rate.
-        default_move: the move a plan without one was rendered with (the render's default).
-        device_scale_factor: pixels per CSS pixel in the posters.
+        fps: the film's frame rate. Its size is not a parameter: it is worked out the way burns
+            worked it out (the first picture at ``framing.aspect``), so it cannot disagree.
+        framing: the :class:`Framing` the film was rendered with — pass the one you gave
+            :func:`camera_path_builder`. Easing is refused unless it is burns' default, because a
+            panel record carries none and braidio's render and the studio's preview use that
+            default: the records would describe a differently-paced film.
         still_fields: extra still-record fields per plan (``labelled``, ``subject``, ``title``,
             ``attribution``, ``note``...). ``labelled=True`` needs a ``subject``.
         voice: ``{"voice_id": ..., "model_id": ...}`` recorded on every narration take.
         cut_label: the cut's name in the studio.
         settings: extra cut settings (``size``/``fps`` are always written).
         gaps: things this manifest knows it does not record, in words.
-        duration_s, image_size: injected media probes (tests pass fakes).
+        duration_s, image_size, film_size: injected media probes (tests pass fakes).
         label_chars: length of a beat's display snippet.
     """
     root = Path(source_dir).resolve()
@@ -127,6 +142,16 @@ def to_production_manifest(
         raise ValueError(
             "no plan has a poster image; there is no picture track to write"
         )
+    eased = {
+        (p.move or framing.default_move).easing or framing.easing for p in renderable
+    }
+    if eased != {DEFAULT_EASING}:
+        raise ValueError(
+            f"the film was eased with {sorted(eased)}; a panel record carries no easing, so "
+            f"braidio and the studio would replay it as {DEFAULT_EASING!r}. Render with "
+            "burns' default easing, or this manifest describes a different film."
+        )
+    size = film_size(image_size(Path(renderable[0].view.image_path)), framing.aspect)
 
     stills: list[dict[str, Any]] = []
     panels: list[dict[str, Any]] = []
@@ -149,11 +174,13 @@ def to_production_manifest(
                 }
             )
         start, end = at, at + plan.duration_s
-        move = plan.move or default_move
+        move = plan.move or framing.default_move
         focus = None
         if move.focus is not None:
             fx, fy, fw, fh = normalized_focus(
-                move.focus, image_size(image), device_scale_factor=device_scale_factor
+                move.focus,
+                image_size(image),
+                device_scale_factor=framing.device_scale_factor,
             )
             focus = {"x": fx, "y": fy, "w": fw, "h": fh}
         panels.append(

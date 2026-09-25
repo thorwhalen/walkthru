@@ -88,6 +88,33 @@ class CameraMove:
     easing: Optional[str] = None
 
 
+#: burns' own default easing — what ``resolve_move`` uses when given none, and so what braidio's
+#: render and the studio's move preview use (a panel record carries no easing).
+DEFAULT_EASING = "ease-in-out"
+
+
+@dataclass(frozen=True)
+class Framing:
+    """How a film frames its panels: one value, shared by the render and the records it writes.
+
+    :func:`camera_path_builder` renders with it and
+    :func:`~walkthru.ecosystem.reelee.production.to_production_manifest` describes the film with
+    it. Passing the same :class:`Framing` to both is what keeps the panel records true to the
+    pixels; two separate sets of knobs would drift apart silently.
+
+    Args:
+        default_move: the move for a panel whose step has no camera keyframe.
+        aspect: the film's ``width / height``; ``None`` frames for each image's own aspect.
+        device_scale_factor: pixels per CSS pixel in the posters (focus rects are CSS pixels).
+        easing: used when a keyframe names none.
+    """
+
+    default_move: CameraMove = CameraMove(move="hold", zoom=1.0)
+    aspect: Optional[float] = None
+    device_scale_factor: float = 1.0
+    easing: str = DEFAULT_EASING
+
+
 @dataclass(frozen=True)
 class PanelPlan:
     """A panel plus the timeline-derived screen time and narration audio for one step.
@@ -166,7 +193,8 @@ def camera_move(camera: Sequence[ResolvedCamera]) -> Optional[CameraMove]:
 
     The first keyframe decides, as with :func:`_camera_hint`: ``zoom > 1`` pushes in to that
     magnification, ``zoom < 1`` pulls out from ``1 / zoom``, and ``zoom == 1`` holds still. The
-    keyframe's ``focus`` (CSS pixels) is what the camera closes on.
+    keyframe's ``focus`` (CSS pixels) is what the camera closes on. A non-positive zoom names no
+    magnification and yields ``None``, as no keyframe does.
 
     >>> from walkthru.core.schema import Anchor, CameraKeyframe
     >>> from walkthru.core.timeline import ResolvedCamera
@@ -177,6 +205,8 @@ def camera_move(camera: Sequence[ResolvedCamera]) -> Optional[CameraMove]:
     if not camera:
         return None
     keyframe = camera[0].keyframe
+    if keyframe.zoom <= 0:
+        return None  # names no magnification, so no move; the default decides
     if keyframe.zoom > 1.0:
         move, zoom = "push_in", keyframe.zoom
     elif keyframe.zoom < 1.0:
@@ -343,46 +373,35 @@ def index_path_builder(
     return build
 
 
-def camera_path_builder(
-    *,
-    default_move: CameraMove = CameraMove(move="hold", zoom=1.0),
-    aspect: Optional[float] = None,
-    easing: str = "ease-in-out",
-    device_scale_factor: float = 1.0,
-) -> PathBuilder:
+def camera_path_builder(framing: Framing = Framing()) -> PathBuilder:
     """Motion from the document's camera track, resolved by :func:`burns.resolve_move`.
 
     Each panel's :class:`CameraMove` (see :func:`camera_move`) is framed against its own image —
     the focus rect closes the camera on the element a step is about. ``resolve_move`` is the one
     resolver braidio's ``video_cut.render`` and the studio's move preview also call, so a panel
     record carrying the same move/zoom/focus describes exactly this film
-    (:func:`walkthru.ecosystem.reelee.production.to_production_manifest` writes those records).
-
-    Args:
-        default_move: the move for a panel with no camera keyframe.
-        aspect: the film's ``width / height``; ``None`` frames for each image's own aspect.
-        easing: used when a keyframe names none.
-        device_scale_factor: pixels per CSS pixel in the posters (focus rects are CSS pixels).
+    (:func:`walkthru.ecosystem.reelee.production.to_production_manifest`, given the same
+    ``framing``, writes those records).
     """
     from burns import resolve_move
     from PIL import Image
 
     def build(plan: PanelPlan):
-        intent = plan.move or default_move
+        intent = plan.move or framing.default_move
         focus = None
         if intent.focus is not None:
             with Image.open(plan.view.image_path) as img:
                 size = img.size
             focus = normalized_focus(
-                intent.focus, size, device_scale_factor=device_scale_factor
+                intent.focus, size, device_scale_factor=framing.device_scale_factor
             )
         return resolve_move(
             intent.move,
             image=plan.view.image_path,
-            aspect=aspect,
+            aspect=framing.aspect,
             zoom=intent.zoom,
             focus=focus,
-            easing=intent.easing or easing,
+            easing=intent.easing or framing.easing,
         )
 
     return build
@@ -422,7 +441,8 @@ def render_plans(
         audio_assembler: assembles per-panel audio into one track; injected for testing.
         path_builder: the camera strategy, ``PanelPlan -> BurnsPath``. ``None`` is
             :func:`index_path_builder` over ``style``/``zoom``/``pan``/``ease``;
-            :func:`camera_path_builder` follows the document's camera track instead.
+            :func:`camera_path_builder` follows the document's camera track instead. Given one,
+            ``style``/``zoom``/``pan``/``ease`` are not used: the builder carries its own.
         audio_out: keep the assembled film-long audio here (by default it is a temporary file).
             A caller that ships the film's recording beside it (a commentary production) needs it.
 

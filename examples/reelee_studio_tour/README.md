@@ -46,7 +46,9 @@ python make_studio_tour.py all --studio-url http://localhost:5185 \
   --project-root ~/.local/share/walkthru/commentary-tour/import/commentary-tour
 ```
 
-Everything it writes goes to `~/.local/share/walkthru/studio-tour/` (`--work-dir` to change): `shots/`, `tts/`, `captured.json`, `narrated.json`, `film.mp4`, `recording.wav`, `production.json`. None of it belongs in this repository. The screenshots show a production whose pictures carry their own licences.
+Everything it writes goes to `~/.local/share/walkthru/studio-tour/` (`--work-dir` to change): `shots/`, `tts/`, `captured.json`, `narrated.json`, `film.mp4`, `recording.wav` (and its `.mp3`), `production.json`. None of it belongs in this repository. The screenshots show a production whose pictures carry their own licences.
+
+Import into a **fresh** `--project-root` each time. A re-import updates the project in place and never deletes, so a shot you removed would stay behind as a stale picture, and rewritten pictures make the finished cut read as out of date.
 
 **4. Put the imported project next to the other productions** on the server, and run the studio's `npm run smoke:studio` against a backend bound to it.
 

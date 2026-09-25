@@ -31,6 +31,7 @@ from walkthru.core.schema import (  # noqa: E402
 from walkthru.core.timeline import resolve_timeline  # noqa: E402
 from walkthru.ecosystem.reelee import (  # noqa: E402
     CameraMove,
+    Framing,
     camera_path_builder,
     normalized_focus,
     render_plans,
@@ -125,7 +126,7 @@ def test_camera_path_builder_frames_on_the_focus(tmp_path):
     buf = io.BytesIO()
     Image.new("RGB", SIZE, (40, 40, 40)).save(buf, format="PNG")
     a, _b, c = _plans(tmp_path, image_bytes=buf.getvalue())
-    build = camera_path_builder(aspect=16 / 9)
+    build = camera_path_builder(Framing(aspect=16 / 9))
     path = build(a)
     end = path.evaluate(1.0)  # a Rect in the image's normalized frame
     cx, cy = end.x + end.w / 2, end.y + end.h / 2
@@ -172,11 +173,11 @@ def test_manifest_lays_panels_and_beats_out_as_the_film_does(tmp_path):
         film=film,
         audio=audio,
         rights={"position": "private", "why": "a test"},
-        size=SIZE,
         fps=30,
         voice={"voice_id": "v", "model_id": "m"},
         duration_s=lambda p: 1.5 if p.suffix == ".mp3" else 9.0,
         image_size=lambda p: SIZE,
+        film_size=lambda first, aspect: first,
     )
     assert m["moves"] == "rendered" and m["source_dir"] == "."
     cut = m["cuts"][0]
@@ -216,10 +217,10 @@ def test_manifest_refuses_a_file_outside_the_source_dir(tmp_path):
             film=inside / "f.mp4",
             audio=inside / "r.wav",
             rights={"position": "private", "why": "a test"},
-            size=SIZE,
             fps=30,
             duration_s=lambda p: 1.0,
             image_size=lambda p: SIZE,
+            film_size=lambda first, aspect: first,
         )
 
 
@@ -239,10 +240,52 @@ def test_manifest_validates_against_braidio_when_it_is_installed(tmp_path):
         film=film,
         audio=audio,
         rights={"position": "private", "why": "a test"},
-        size=SIZE,
         fps=30,
         duration_s=lambda p: 1.0,
         image_size=lambda p: SIZE,
+        film_size=lambda first, aspect: first,
     )
     manifest = importing.ProductionManifest.model_validate(m)
     assert manifest.moves == "rendered"
+
+
+def _manifest(tmp_path, plans, **kw):
+    film, audio = tmp_path / "film.mp4", tmp_path / "rec.wav"
+    film.write_bytes(b"mp4")
+    audio.write_bytes(b"wav")
+    return to_production_manifest(
+        plans,
+        production="demo",
+        title="Demo",
+        source_dir=tmp_path,
+        film=film,
+        audio=audio,
+        rights={"position": "private", "why": "a test"},
+        fps=30,
+        duration_s=lambda p: 1.0,
+        image_size=lambda p: SIZE,
+        **kw,
+    )
+
+
+def test_manifest_refuses_an_easing_no_panel_record_can_carry(tmp_path):
+    with pytest.raises(ValueError, match="carries no easing"):
+        _manifest(tmp_path, _plans(tmp_path), framing=Framing(easing="linear"))
+
+
+def test_manifest_takes_the_film_size_from_the_first_picture_like_burns(tmp_path):
+    """A retina capture makes a 3840x2160 film; the record must not say 1920x1080."""
+    m = _manifest(
+        tmp_path,
+        _plans(tmp_path),
+        framing=Framing(aspect=16 / 9),
+        film_size=lambda first, aspect: (first[0] * 2, first[1] * 2),
+    )
+    assert (m["cuts"][0]["width"], m["cuts"][0]["height"]) == (3840, 2160)
+
+
+def test_a_zero_zoom_keyframe_names_no_move(tmp_path):
+    doc = _doc(tmp_path)
+    doc.tracks.camera[1].zoom = 0.0
+    _a, b, _c = timeline_to_plans(resolve_timeline(doc))
+    assert b.move is None  # no ZeroDivisionError on any path; the default decides
