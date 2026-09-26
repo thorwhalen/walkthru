@@ -529,6 +529,177 @@ SHOTS: tuple[Shot, ...] = (
 )
 
 
+# --------------------------------------------------------------------------------------
+# The screen-recorded tour: what a person's hand does, shot by shot
+# --------------------------------------------------------------------------------------
+#
+# A still capture can dispatch a command and photograph the result. A screen recording shows
+# the hand that did it, so each shot says what a person would actually do — glide to the tab and
+# click it, type the name, scroll down — and the recorder does exactly that with a visible
+# pointer (``make_screencast_tour.py``). A shot with no gesture points at ``point`` (if any) and
+# runs its command, as the still capture does. Ops:
+#
+# - ``("click", locator)`` glide to it, press;  ``("hover", locator)`` glide to it;
+# - ``("type", locator, text)`` click it and type;  ``("clear", locator)`` empty an input;
+# - ``("key", name)`` press a key;  ``("command",)`` run the shot's own command here;
+# - ``("scroll_to", text)`` / ``("scroll_by", dy)`` / ``("scroll_top",)`` scroll the page smoothly;
+# - ``("wheel_dialog", dy)`` scroll the dialog on top;  ``("pause", ms)`` wait.
+
+
+def library_picture(alt: str) -> Locator:
+    """A picture in the library (the Pictures tab), by what it shows."""
+    return Locator(
+        strategy="xpath",
+        value=f"(//*[contains(@class,'st-library-shell')]//img[@alt='{alt}'])[1]",
+    )
+
+
+def dialog_picture(alt: str) -> Locator:
+    """A picture in the dialog on top (the picker), by what it shows."""
+    return Locator(
+        strategy="xpath", value=f"((//*[@role='dialog'])[last()]//img[@alt='{alt}'])[1]"
+    )
+
+
+def dialog_button(name: str) -> Locator:
+    return Locator(
+        strategy="xpath",
+        value=f"((//*[@role='dialog'])[last()]//button[normalize-space()='{name}'])[1]",
+    )
+
+
+def track_card(n: int) -> Locator:
+    """Picture ``n`` of "The pictures, in order"."""
+    return css(f"button[title='Open picture {n} and change it']")
+
+
+#: What each shot of :data:`SHOTS` looks like done by hand.
+GESTURES: dict[str, tuple] = {
+    "arrive": (("pause", 300),),  # the page is already open when the recording starts
+    "watch-start": (("hover", css("video")), ("command",)),
+    "storybook": (("click", button("Storybook")),),
+    "storybook-scroll": (("scroll_by", 700),),
+    "pictures": (("scroll_top",), ("click", button("Pictures"))),
+    "pictures-filters": (("click", button("Says who")),),
+    "pictures-search": (
+        ("click", button("Any")),
+        ("type", css("input.st-library-search"), "Charli"),
+    ),
+    "pictures-compact": (
+        ("clear", css("input.st-library-search")),
+        ("click", button("Compact")),
+    ),
+    "pictures-compact-view": (("hover", LIBRARY),),
+    "add-a-picture": (("click", button("Add a picture")),),
+    "picture-scope": (("key", "Escape"), ("click", library_picture("Taylor Swift"))),
+    "picture-scope-close": (("key", "Escape"), ("click", button("Watch"))),
+    "in-order": (("scroll_to", "The pictures, in order"),),
+    "moment-open": (("click", track_card(2)),),
+    "moment-play": (("click", dialog_button("Show the move again")),),
+    "moment-drift": (("click", dialog_button("Drift right")),),
+    "moment-play-again": (("click", dialog_button("Show the move again")),),
+    "moment-restore": (("click", dialog_button("Push in")),),
+    "picker": (("click", dialog_button("Use a different picture")),),
+    "picker-full": (("click", dialog_button("Full")),),
+    "picker-scroll": (("wheel_dialog", 700),),
+    "picker-choose": (("click", dialog_picture("The Eras Tour, London")),),
+    "picker-close": (("key", "Escape"),),
+    "moment-next": (("click", dialog_button("Next →")),),
+    "moment-close": (("key", "Escape"),),
+    "together-again": (("scroll_to", "Putting it together again"),),
+    "wrap": (("scroll_top",),),
+}
+
+#: The phone short: the same screen at phone width, under a minute. Its own words, because a
+#: minute holds a third of the tour; the gestures carry it.
+SHORT_ID = "reelee-commentary-tour-phone"
+SHORT_TITLE = "The Commentary screen, on a phone — a one-minute tour"
+SHORT_SHOTS: tuple[Shot, ...] = (
+    Shot(
+        "arrive",
+        "tour.noop",
+        "Here's Reelee's Commentary screen, on a phone. A finished film, in pieces you can change.",
+        section="phone",
+    ),
+    Shot(
+        "watch",
+        "tour.video.at",
+        "It's a film, so let's watch a little.",
+        params={"seconds": 1.0},
+        section="phone",
+    ),
+    Shot(
+        "storybook",
+        "studio.commentary.tab.show",
+        "Storybook lays the whole film out as one page. Every picture, in order.",
+        params={"tab": "storybook"},
+        section="phone",
+    ),
+    Shot(
+        "pictures",
+        "studio.commentary.tab.show",
+        "Pictures is the library. Search it by name.",
+        params={"tab": "pictures"},
+        section="phone",
+    ),
+    Shot(
+        "in-order",
+        "studio.commentary.tab.show",
+        "Back on Watch, scroll down, and there's every picture with its camera move.",
+        params={"tab": "watch"},
+        section="phone",
+    ),
+    Shot(
+        "moment",
+        "studio.commentary.moment.open",
+        "Tap one to open it.",
+        params={"panelId": MOMENT},
+        section="phone",
+    ),
+    Shot(
+        "drift",
+        "studio.commentary.camera.move",
+        "Try drift right, and play it.",
+        params={"move": TRIED_MOVE},
+        section="phone",
+    ),
+    Shot(
+        "restore",
+        "studio.commentary.camera.move",
+        "Hmm, back to push in. Close it, and that's the tour. Have fun!",
+        params={"move": MOMENT_MOVE},
+        section="phone",
+    ),
+)
+
+SHORT_GESTURES: dict[str, tuple] = {
+    "arrive": (("pause", 300),),
+    # a tap on the film plays it (its native controls), and the page stays where it is
+    "watch": (("scroll_by", 430), ("click", css("video"))),
+    "storybook": (("scroll_top",), ("click", button("Storybook")), ("pause", 900), ("scroll_by", 900)),
+    "pictures": (
+        ("scroll_top",),
+        ("click", button("Pictures")),
+        ("pause", 300),
+        ("type", css("input.st-library-search"), "Taylor"),
+    ),
+    "in-order": (
+        ("clear", css("input.st-library-search")),
+        ("scroll_top",),
+        ("click", button("Watch")),
+        ("pause", 500),
+        ("scroll_to", "The pictures, in order"),
+    ),
+    "moment": (("click", track_card(2)),),
+    "drift": (
+        ("click", dialog_button("Drift right")),
+        ("pause", 800),
+        ("click", dialog_button("Show the move again")),
+    ),
+    "restore": (("click", dialog_button("Push in")), ("pause", 900), ("key", "Escape")),
+}
+
+
 def _camera_keyframe(shot: Shot) -> CameraKeyframe:
     return CameraKeyframe(
         id=f"cam-{shot.id}", anchor=Anchor(step_id=shot.id), zoom=shot.zoom
@@ -546,7 +717,11 @@ def _cursor_cue(shot: Shot) -> Optional[CursorCue]:
 
 
 def build_document(
-    shots: tuple[Shot, ...] = SHOTS, *, shot_ms: int = DEFAULT_SHOT_MS
+    shots: tuple[Shot, ...] = SHOTS,
+    *,
+    shot_ms: int = DEFAULT_SHOT_MS,
+    doc_id: str = TOUR_ID,
+    title: str = TOUR_TITLE,
 ) -> DemoDocument:
     """The tour as a Demo Document: one step per shot, grouped into sections, with its tracks.
 
@@ -581,8 +756,8 @@ def build_document(
             )
         )
     return DemoDocument(
-        id=TOUR_ID,
-        meta=Meta(title=TOUR_TITLE),
+        id=doc_id,
+        meta=Meta(title=title),
         sections=sections,
         tracks=Tracks(
             cues=[cue for cue in map(_cursor_cue, shots) if cue is not None],

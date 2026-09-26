@@ -24,9 +24,17 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:  # type-checker only — never imported at runtime (firewall)
     from playwright.async_api import Page
 
-__all__ = ["DEFAULT_CURSOR_SIZE", "cursor_script", "install_synthetic_cursor"]
+__all__ = [
+    "CURSOR_SHAPES",
+    "DEFAULT_CURSOR_SIZE",
+    "cursor_script",
+    "install_synthetic_cursor",
+]
 
 DEFAULT_CURSOR_SIZE = 22
+#: ``arrow`` is a mouse pointer; ``touch`` is a fingertip, for a phone-sized recording where an
+#: arrow would say "desktop" (make it bigger: ``size=40`` reads as a finger).
+CURSOR_SHAPES = ("arrow", "touch")
 
 # An arrow drawn as an SVG, carried base64 so the data URI contains no quote characters.
 # A raw `utf8,<svg xmlns='http://...'>` URI terminates the surrounding JavaScript string
@@ -36,7 +44,11 @@ _ARROW = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAw
 
 
 def cursor_script(
-    *, size: int = DEFAULT_CURSOR_SIZE, smoothing_ms: int = 90, ring: bool = True
+    *,
+    size: int = DEFAULT_CURSOR_SIZE,
+    smoothing_ms: int = 90,
+    ring: bool = True,
+    shape: str = "arrow",
 ) -> str:
     """The JavaScript that draws and moves the overlay.
 
@@ -47,7 +59,31 @@ def cursor_script(
             between points; a short transition turns each jump into a visible glide, which
             is what makes the motion readable.
         ring: draw a contrasting halo on mouse-down, so clicks are visible too.
+        shape: ``"arrow"`` (a mouse pointer, its tip on the point) or ``"touch"`` (a translucent
+            fingertip centred on the point, which darkens while pressed).
+
+    >>> "border-radius:50%" in cursor_script(shape="touch").split("walkthru-cursor-ring")[0]
+    True
+    >>> cursor_script(shape="hand")
+    Traceback (most recent call last):
+    ...
+    ValueError: shape must be one of ('arrow', 'touch'), got 'hand'
     """
+    if shape not in CURSOR_SHAPES:
+        raise ValueError(f"shape must be one of {CURSOR_SHAPES}, got {shape!r}")
+    if shape == "touch":
+        look = (
+            "'border-radius:50%', 'background:rgba(255,255,255,.55)', "
+            "'border:2px solid rgba(0,0,0,.35)', 'box-sizing:border-box'"
+        )
+        offset = size // 2
+        press = """
+    addEventListener('mousedown', () => {{ c.style.background = 'rgba(80,80,80,.55)'; }}, {{passive: true}});
+    addEventListener('mouseup', () => {{ c.style.background = 'rgba(255,255,255,.55)'; }}, {{passive: true}});"""
+    else:
+        look = f"'background:url(\"{_ARROW}\") no-repeat center/contain'"
+        offset = 2
+        press = ""
     return f"""
 (() => {{
   if (window.__walkthruCursor) return;
@@ -57,9 +93,9 @@ def cursor_script(
     c.id = 'walkthru-cursor';
     c.style.cssText = [
       'position:fixed', 'left:0', 'top:0', 'width:{size}px', 'height:{size}px',
-      'background:url("{_ARROW}") no-repeat center/contain',
+      {look},
       'pointer-events: none', 'z-index:2147483647', 'opacity:0',
-      'transform:translate(-2px,-2px)',
+      'transform:translate(-{offset}px,-{offset}px)',
       'transition:transform {
         smoothing_ms
     }ms cubic-bezier(.22,.61,.36,1), opacity 160ms',
@@ -80,11 +116,12 @@ def cursor_script(
 
     let shown = false;
     addEventListener('mousemove', (e) => {{
-      c.style.transform = `translate(${{e.clientX - 2}}px, ${{e.clientY - 2}}px)`;
+      c.style.transform = `translate(${{e.clientX - {offset}}}px, ${{e.clientY - {offset}}}px)`;
       r.style.left = e.clientX + 'px';
       r.style.top = e.clientY + 'px';
       if (!shown) {{ shown = true; c.style.opacity = '1'; }}
     }}, {{passive: true}});
+{press.format() if press else ""}
 
     {
         '''addEventListener('mousedown', () => {
@@ -108,6 +145,7 @@ async def install_synthetic_cursor(
     size: int = DEFAULT_CURSOR_SIZE,
     smoothing_ms: int = 90,
     ring: bool = True,
+    shape: str = "arrow",
 ) -> Any:
     """Install the overlay on ``page``. Call before navigating.
 
@@ -123,5 +161,5 @@ async def install_synthetic_cursor(
     (1, True)
     """
     return await page.add_init_script(
-        cursor_script(size=size, smoothing_ms=smoothing_ms, ring=ring)
+        cursor_script(size=size, smoothing_ms=smoothing_ms, ring=ring, shape=shape)
     )

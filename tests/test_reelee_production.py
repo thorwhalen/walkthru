@@ -31,6 +31,7 @@ from walkthru.core.schema import (  # noqa: E402
 from walkthru.core.timeline import resolve_timeline  # noqa: E402
 from walkthru.ecosystem.reelee import (  # noqa: E402
     CameraMove,
+    FootageTrack,
     Framing,
     camera_path_builder,
     normalized_focus,
@@ -289,3 +290,72 @@ def test_a_zero_zoom_keyframe_names_no_move(tmp_path):
     doc.tracks.camera[1].zoom = 0.0
     _a, b, _c = timeline_to_plans(resolve_timeline(doc))
     assert b.move is None  # no ZeroDivisionError on any path; the default decides
+
+
+# --- a film cut from a screen recording ------------------------------------------------
+
+
+def _footage(tmp_path, **kw):
+    rec = tmp_path / "screen.mp4"
+    rec.write_bytes(b"mp4")
+    return FootageTrack(
+        path=rec,
+        in_points={"a": 0.25, "b": 3.9, "c": 7.1},
+        size=(1080, 1920),
+        fps=30,
+        **kw,
+    )
+
+
+def test_footage_panels_name_the_recording_and_hold_still(tmp_path):
+    m = _manifest(
+        tmp_path, _plans(tmp_path), footage=_footage(tmp_path), video_duration_s=lambda p: 12.5
+    )
+    cut = m["cuts"][0]
+    assert [p["footage"] for p in cut["panels"]] == [
+        {"key": "screencast", "in_s": 0.25},
+        {"key": "screencast", "in_s": 3.9},
+        {"key": "screencast", "in_s": 7.1},
+    ]
+    # no move is rendered over footage, and the records say so
+    assert {(p["move"], p["zoom"], p["focus"]) for p in cut["panels"]} == {
+        ("hold", 1.0, None)
+    }
+    # the film is the recording's size, not a picture's
+    assert (cut["width"], cut["height"]) == (1080, 1920)
+    assert m["footage"] == [
+        {"key": "screencast", "path": "screen.mp4", "width": 1080, "height": 1920,
+         "fps": 30, "duration_s": 12.5}
+    ]
+    # the spans are the narration's, exactly as for a Ken Burns film
+    assert [(p["start"], p["end"]) for p in cut["panels"]] == [
+        (0, 3.5), (3.5, 6.5), (6.5, 9.0)
+    ]
+
+
+def test_footage_needs_an_in_point_for_every_panel(tmp_path):
+    from dataclasses import replace
+
+    track = replace(_footage(tmp_path), in_points={"a": 0.0})
+    with pytest.raises(ValueError, match=r"no in-point for panels \['b', 'c'\]"):
+        _manifest(tmp_path, _plans(tmp_path), footage=track)
+
+
+def test_footage_ignores_an_easing_it_never_renders(tmp_path):
+    m = _manifest(
+        tmp_path, _plans(tmp_path), framing=Framing(easing="linear"),
+        footage=_footage(tmp_path), video_duration_s=lambda p: 1.0,
+    )
+    assert m["cuts"][0]["panels"][0]["move"] == "hold"
+
+
+def test_a_footage_manifest_validates_against_braidio_when_it_can(tmp_path):
+    importing = pytest.importorskip("braidio.importing")
+    if "footage" not in importing.ProductionManifest.model_fields:
+        pytest.skip("this braidio predates footage panels")
+    m = _manifest(
+        tmp_path, _plans(tmp_path), footage=_footage(tmp_path), video_duration_s=lambda p: 1.0
+    )
+    manifest = importing.ProductionManifest.model_validate(m)
+    assert manifest.footage_keys == {"screencast"}
+    assert manifest.cuts[0].panels[1].footage.in_s == 3.9
