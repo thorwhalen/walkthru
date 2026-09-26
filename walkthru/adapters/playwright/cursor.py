@@ -116,7 +116,9 @@ def cursor_script(
 
     let shown = false;
     addEventListener('mousemove', (e) => {{
-      c.style.transform = `translate(${{e.clientX - {offset}}}px, ${{e.clientY - {offset}}}px)`;
+      c.style.transform = `translate(${{e.clientX - {offset}}}px, ${{e.clientY - {
+        offset
+    }}}px)`;
       r.style.left = e.clientX + 'px';
       r.style.top = e.clientY + 'px';
       if (!shown) {{ shown = true; c.style.opacity = '1'; }}

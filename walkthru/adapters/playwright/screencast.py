@@ -204,7 +204,9 @@ class CdpScreencastRecorder:
     def origin(self) -> float:
         """The wall-clock time of video time 0 (when recording started)."""
         if self._start_ts is None:
-            raise RecorderStateError("the recording has not started, so it has no origin")
+            raise RecorderStateError(
+                "the recording has not started, so it has no origin"
+            )
         return self._start_ts
 
     def video_time(self, wall_ts: float) -> float:
@@ -239,7 +241,9 @@ class CdpScreencastRecorder:
         # Acknowledge first: Chrome sends the next frame only once this one is, so
         # anything done before the ack lowers the frame rate under load.
         ack = asyncio.ensure_future(
-            self._cdp.send("Page.screencastFrameAck", {"sessionId": params["sessionId"]})
+            self._cdp.send(
+                "Page.screencastFrameAck", {"sessionId": params["sessionId"]}
+            )
         )
         self._acks.add(ack)
         ack.add_done_callback(self._acks.discard)

@@ -190,7 +190,11 @@ def to_production_manifest(
             "no plan has a poster image; there is no picture track to write"
         )
     if footage is not None:
-        missing = [p.view.panel_id for p in renderable if p.view.panel_id not in footage.in_points]
+        missing = [
+            p.view.panel_id
+            for p in renderable
+            if p.view.panel_id not in footage.in_points
+        ]
         if missing:
             raise ValueError(f"the footage has no in-point for panels {missing}")
     eased = {
