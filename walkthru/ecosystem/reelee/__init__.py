@@ -13,7 +13,7 @@ Importing this module imports ``reelee``; like everything in :mod:`walkthru.ecos
 the core imports it, so the firewall holds and ``reelee`` stays an optional extra.
 """
 
-from walkthru.ecosystem.reelee.production import to_production_manifest
+from walkthru.ecosystem.reelee.production import FootageTrack, to_production_manifest
 from walkthru.ecosystem.reelee.render_target import (
     AssetResolver,
     AudioAssembler,
@@ -53,4 +53,5 @@ __all__ = [
     "timeline_to_panels",
     "timeline_to_plans",
     "to_production_manifest",
+    "FootageTrack",
 ]

@@ -8,6 +8,7 @@ The tour is rendered as a **real commentary film**: the screenshots are its pict
 | --- | --- |
 | `studio_tour.py` | The authoring source: `SHOTS`, one per step (what to do, what to say, where the pointer rests, what the camera closes on), and `build_document()`, which turns them into a walkthru Demo Document. Pure core. |
 | `make_studio_tour.py` | The pipeline: `capture → narrate → render → manifest → import`. |
+| `make_screencast_tour.py` | The same tour **filmed**: `narrate → record → render → manifest → import`, as a desktop cut (`--cut long`) or a one-minute phone cut (`--cut short`). |
 
 ## Re-recording it
 
@@ -51,6 +52,19 @@ Everything it writes goes to `~/.local/share/walkthru/studio-tour/` (`--work-dir
 Import into a **fresh** `--project-root` each time. A re-import updates the project in place and never deletes, so a shot you removed would stay behind as a stale picture, and rewritten pictures make the finished cut read as out of date.
 
 **4. Put the imported project next to the other productions** on the server, and run the studio's `npm run smoke:studio` against a backend bound to it.
+
+## The filmed tour (a screen recording)
+
+`make_screencast_tour.py` films the tour instead of photographing it: the pointer glides, clicks land, lists scroll, the film plays. It reuses the same shots and words; each shot's `GESTURES` entry in `studio_tour.py` says what the hand does (a phone short has its own `SHORT_SHOTS` and `SHORT_GESTURES`).
+
+```bash
+python make_screencast_tour.py all --cut long --studio-url http://localhost:5185 \
+  --project-root ~/.local/share/walkthru/screencast-tour/import/commentary-tour
+python make_screencast_tour.py all --cut short --studio-url http://localhost:5185 \
+  --project-root ~/.local/share/walkthru/screencast-tour/import/commentary-tour-phone
+```
+
+The same setup as above (a throwaway copy, a local backend, a DEV studio). `narrate` reads the still tour's voice cache, so its unchanged lines cost nothing. `record` plays the paced document in real time under a `CdpScreencastRecorder` and writes when each shot began; `render` is braidio's own render with **footage panels**, each shot playing the recording from where it began for exactly as long as its line. `record` prints any shot that outran its slot (its tail would be cut): lengthen the line or shorten the gesture. Work data goes to `~/.local/share/walkthru/screencast-tour/<cut>/`.
 
 ## What it needs
 

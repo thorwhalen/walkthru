@@ -7,9 +7,12 @@ Playwright recorder, a driver.js cue renderer) live in :mod:`walkthru.adapters` 
 :mod:`walkthru.ecosystem` instead, behind the ports firewall.
 
 Currently: :class:`~walkthru.observers.pacing.WallClockPacer`, which replays a Demo Document in
-real time so a screen recorder films each command at its authored moment.
+real time so a screen recorder films each command at its authored moment, and
+:class:`~walkthru.observers.marks.StepMarks`, which writes down when each step actually started so
+a film can be cut from the recording at the right places (:func:`~walkthru.observers.marks.in_points`).
 """
 
+from walkthru.observers.marks import StepMarks, in_points, overruns
 from walkthru.observers.pacing import Clock, Sleep, WallClockPacer
 
-__all__ = ["WallClockPacer", "Clock", "Sleep"]
+__all__ = ["WallClockPacer", "Clock", "Sleep", "StepMarks", "in_points", "overruns"]

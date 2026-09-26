@@ -455,6 +455,41 @@ spoken recording. Two things were missing.
 docstring says so. The alternative, having `to_production_manifest` render the film itself,
 would merge two stages that re-run at different costs (a manifest is free, a render is minutes).
 
+## D17. A tour can be filmed, not photographed: a timestamped screencast, cut by braidio — **[call]**
+
+**Context:** the Commentary-screen tour (D16) was screenshots under a Ken Burns camera. What was
+wanted was a video of someone clicking around. walkthru could already record (Playwright's WebM
+screencast, D15's cursor), but that recording smears small interface text, and nothing tied it to
+the narration: a command's latency shifts everything after it.
+
+**Decision:**
+
+- **`CdpScreencastRecorder`** records through Chrome DevTools' `Page.startScreencast`: JPEG
+  frames at device resolution (`screencast_launch_args` forces the scale factor, so a 432×768
+  phone viewport films at 1080×1920), each with a wall-clock timestamp. Video time 0 is when
+  recording started. `stop()` builds a constant-rate schedule in Python (`cfr_schedule`: each
+  output frame shows the latest screencast frame at or before its moment) and pipes it to
+  ffmpeg.
+- **`StepMarks`** (after `WallClockPacer` in the observer list) writes down when each step really
+  began; `in_points` maps those into the recording; `overruns` names a step that outlasted its
+  slot, whose tail a cut would lose.
+- **The film is cut by braidio, not by walkthru.** Each step becomes a braidio *footage panel*
+  (`Panel(footage=Footage(recording, in_s))`): it plays the recording from the step's observed
+  start for exactly its narrated span. The narration is the timeline, the recording is the
+  source, and a slow command costs a skipped instant between shots, never drift.
+  `to_production_manifest(footage=FootageTrack(...))` records the same thing for the importer, so
+  the studio's own re-render reproduces the film (checked: identical frames).
+- **Gestures, not dispatches.** The screencast executor does what a person does — glide to the
+  tab and click it, type the name, scroll — from a per-shot gesture list in the example, and
+  falls back to the command only where no hand is visible. `install_synthetic_cursor(shape="touch")`
+  draws a fingertip for phone recordings.
+
+**The sharp edge, recorded because it cost a whole take:** the first encoder was an `ffconcat`
+list with a `duration` per frame. The concat demuxer stretches an image shorter than its default
+frame time, so a screencast arriving at 60 frames a second encoded ten seconds longer than it ran,
+and every later cut slid off its narration. `test_the_schedule_is_exactly_as_long_as_the_recording_whatever_the_frame_rate`
+and the ffmpeg duration test pin the replacement.
+
 ---
 
 ## Open judgment calls deferred to issues (not yet decided)
