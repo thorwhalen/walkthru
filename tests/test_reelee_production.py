@@ -344,7 +344,7 @@ def test_footage_needs_an_in_point_for_every_panel(tmp_path):
 def test_footage_ignores_an_easing_it_never_renders(tmp_path):
     m = _manifest(
         tmp_path, _plans(tmp_path), framing=Framing(easing="linear"),
-        footage=_footage(tmp_path), video_duration_s=lambda p: 1.0,
+        footage=_footage(tmp_path), video_duration_s=lambda p: 12.5,
     )
     assert m["cuts"][0]["panels"][0]["move"] == "hold"
 
@@ -354,8 +354,15 @@ def test_a_footage_manifest_validates_against_braidio_when_it_can(tmp_path):
     if "footage" not in importing.ProductionManifest.model_fields:
         pytest.skip("this braidio predates footage panels")
     m = _manifest(
-        tmp_path, _plans(tmp_path), footage=_footage(tmp_path), video_duration_s=lambda p: 1.0
+        tmp_path, _plans(tmp_path), footage=_footage(tmp_path), video_duration_s=lambda p: 12.5
     )
     manifest = importing.ProductionManifest.model_validate(m)
     assert manifest.footage_keys == {"screencast"}
     assert manifest.cuts[0].panels[1].footage.in_s == 3.9
+
+
+def test_an_in_point_past_the_recording_is_refused(tmp_path):
+    with pytest.raises(ValueError, match=r"past the end of the 5.00s recording: \{'c': 7.1\}"):
+        _manifest(
+            tmp_path, _plans(tmp_path), footage=_footage(tmp_path), video_duration_s=lambda p: 5.0
+        )

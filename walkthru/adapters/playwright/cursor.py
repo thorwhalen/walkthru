@@ -76,7 +76,7 @@ def cursor_script(
             "'border-radius:50%', 'background:rgba(255,255,255,.55)', "
             "'border:2px solid rgba(0,0,0,.35)', 'box-sizing:border-box'"
         )
-        offset = size // 2
+        offset = size / 2
         press = """
     addEventListener('mousedown', () => {{ c.style.background = 'rgba(80,80,80,.55)'; }}, {{passive: true}});
     addEventListener('mouseup', () => {{ c.style.background = 'rgba(255,255,255,.55)'; }}, {{passive: true}});"""

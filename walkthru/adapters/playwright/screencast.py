@@ -30,11 +30,13 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import re
 import subprocess
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional, Sequence, Union
 
+from walkthru.adapters.gif.render_target import check_ffmpeg
 from walkthru.adapters.playwright.recorder import RecorderError, RecorderStateError
 from walkthru.core.schema import AssetRef
 
@@ -50,6 +52,8 @@ __all__ = [
 ]
 
 DEFAULT_FPS = 30
+#: The names this recorder gives its frames — the only files it ever deletes.
+_FRAME_NAME = re.compile(r"\d{6}\.jpg")
 #: JPEG quality of each screencast frame. 92 keeps small interface text crisp.
 DEFAULT_QUALITY = 92
 #: x264 constant-rate factor for the encoded mp4 (lower is better; 16 is near-transparent).
@@ -143,12 +147,14 @@ class CdpScreencastRecorder:
         page: a Playwright ``Page`` in Chromium (duck-typed: ``page.context.new_cdp_session``).
         save_as: where the finished mp4 goes.
         frames_dir: where frames are written while recording (default: ``<save_as stem>_frames``
-            beside it). Kept after ``stop`` so a frame can be inspected; delete it when done.
+            beside it). Only files named like its frames (``000123.jpg``) are ever deleted there.
         fps: frame rate of the encoded mp4.
         quality: JPEG quality of each frame.
         max_size: ``(width, height)`` cap on frame size, in device pixels (default: uncapped).
         crf: x264 quality of the encoded mp4.
         encoder: ``(argv, frame_bytes_iterable) -> None``, runs ffmpeg (injected for tests).
+        keep_frames: keep the frame JPEGs after encoding (default: delete them).
+        check_ffmpeg: fail at ``start()`` when ffmpeg is not on PATH (default ``True``).
         clock: wall-clock seconds, the frames' clock (injected for tests).
     """
 
@@ -164,6 +170,8 @@ class CdpScreencastRecorder:
         crf: int = DEFAULT_CRF,
         encoder: Callable[[Sequence[str], Iterable[bytes]], Any] = _pipe_frames,
         clock: Callable[[], float] = time.time,
+        keep_frames: bool = False,
+        check_ffmpeg: bool = True,
     ):
         self._page = page
         self._save_as = Path(save_as)
@@ -177,6 +185,8 @@ class CdpScreencastRecorder:
         self._max_size = max_size
         self._crf = crf
         self._encoder = encoder
+        self._keep_frames = keep_frames
+        self._check_ffmpeg = check_ffmpeg
         self._start_ts: Optional[float] = None
         self._clock = clock
         self._cdp: Any = None
@@ -204,10 +214,13 @@ class CdpScreencastRecorder:
     async def start(self) -> None:
         if self._started:
             raise RecorderStateError("recorder already started")
+        if self._check_ffmpeg:
+            check_ffmpeg()  # found now, not after a four-minute take
         self._started = True
         self._frames_dir.mkdir(parents=True, exist_ok=True)
-        for stale in self._frames_dir.glob("*.jpg"):
-            stale.unlink()
+        for stale in self._frames_dir.iterdir():  # only frames this recorder writes
+            if _FRAME_NAME.fullmatch(stale.name):
+                stale.unlink()
         self._cdp = await self._page.context.new_cdp_session(self._page)
         self._cdp.on("Page.screencastFrame", self._on_frame)
         params: dict[str, Any] = {
@@ -223,15 +236,19 @@ class CdpScreencastRecorder:
     def _on_frame(self, params: dict) -> None:
         if self._stopped:
             return
-        path = self._frames_dir / f"{len(self._frames):06d}.jpg"
-        path.write_bytes(base64.b64decode(params["data"]))
-        self._frames.append((float(params["metadata"]["timestamp"]), path))
-        # Chrome sends the next frame only once this one is acknowledged.
+        # Acknowledge first: Chrome sends the next frame only once this one is, so
+        # anything done before the ack lowers the frame rate under load.
         ack = asyncio.ensure_future(
             self._cdp.send("Page.screencastFrameAck", {"sessionId": params["sessionId"]})
         )
         self._acks.add(ack)
         ack.add_done_callback(self._acks.discard)
+        # ``timestamp`` is optional in the protocol; without it, the arrival time
+        # (the same wall clock, a few milliseconds later) is the next best thing.
+        ts = (params.get("metadata") or {}).get("timestamp")
+        path = self._frames_dir / f"{len(self._frames):06d}.jpg"
+        path.write_bytes(base64.b64decode(params["data"]))
+        self._frames.append((float(ts) if ts is not None else self._clock(), path))
 
     async def stop(self) -> AssetRef:
         if not self._started:
@@ -239,8 +256,11 @@ class CdpScreencastRecorder:
         if self._stopped:
             raise RecorderStateError("recorder already stopped")
         end_ts = self._clock()
-        await self._cdp.send("Page.stopScreencast")
         self._stopped = True
+        try:
+            await self._cdp.send("Page.stopScreencast")
+        except Exception:  # noqa: BLE001 — the page may be gone; the frames are not
+            pass
         if self._acks:
             await asyncio.gather(*self._acks, return_exceptions=True)
         schedule = cfr_schedule(
@@ -252,4 +272,7 @@ class CdpScreencastRecorder:
             encode_argv(self._save_as, fps=self._fps, crf=self._crf),
             (paths[i].read_bytes() for i in schedule),
         )
+        if not self._keep_frames:  # minutes of motion is gigabytes of JPEG
+            for path in paths:
+                path.unlink(missing_ok=True)
         return AssetRef(uri=str(self._save_as), mime="video/mp4")

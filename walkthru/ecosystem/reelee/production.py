@@ -297,6 +297,12 @@ def to_production_manifest(
     }
     footage_records = []
     if footage is not None:
+        length = video_duration_s(Path(footage.path))
+        late = {k: v for k, v in footage.in_points.items() if v >= length}
+        if late:
+            raise ValueError(
+                f"in-points at or past the end of the {length:.2f}s recording: {late}"
+            )
         footage_records.append(
             {
                 "key": footage.key,
@@ -304,7 +310,7 @@ def to_production_manifest(
                 "width": footage.size[0],
                 "height": footage.size[1],
                 "fps": footage.fps,
-                "duration_s": round(video_duration_s(Path(footage.path)), 3),
+                "duration_s": round(length, 3),
                 **({"note": footage.note} if footage.note else {}),
             }
         )

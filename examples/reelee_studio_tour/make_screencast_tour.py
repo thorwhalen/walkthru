@@ -339,8 +339,8 @@ async def record(work_dir: Path, cut: dict[str, Any], *, base_url: str) -> dict[
         await page.wait_for_timeout(200)  # the first frame, so video time 0 exists
         try:
             await play(doc, executor, observers=[WallClockPacer(), marks, track])
-        finally:
             asset = await recorder.stop()
+        finally:
             await browser.close()
         if errors:
             raise RuntimeError("the studio threw during the tour: " + "; ".join(errors))

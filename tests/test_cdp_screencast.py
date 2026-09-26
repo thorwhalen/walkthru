@@ -25,10 +25,11 @@ class FakeCdp:
         self.sent.append((method, params or {}))
         return {}
 
-    def frame(self, ts: float, data: bytes = b"jpeg", session: int = 1):
+    def frame(self, ts, data: bytes = b"jpeg", session: int = 1):
+        metadata = {} if ts is None else {"timestamp": ts}
         self.handlers["Page.screencastFrame"](
             {"data": base64.b64encode(data).decode(), "sessionId": session,
-             "metadata": {"timestamp": ts}}
+             "metadata": metadata}
         )
 
 
@@ -50,7 +51,7 @@ def test_it_records_frames_acks_them_and_encodes_a_timed_list(tmp_path):
     ticks = iter([9.9, 12.0])  # started, stopped
     rec = CdpScreencastRecorder(
         page, save_as=tmp_path / "tour.mp4", max_size=(1080, 1920), fps=10,
-        encoder=lambda argv, frames: runs.append((argv, list(frames))),
+        encoder=lambda argv, frames: runs.append((argv, list(frames))), check_ffmpeg=False,
         clock=lambda: next(ticks),
     )
 
@@ -70,7 +71,8 @@ def test_it_records_frames_acks_them_and_encodes_a_timed_list(tmp_path):
     acks = [p["sessionId"] for m, p in cdp.sent if m == "Page.screencastFrameAck"]
     assert acks == [1, 2]
     assert asset.uri == str(tmp_path / "tour.mp4") and asset.mime == "video/mp4"
-    assert [p.read_bytes() for _, p in rec.frames] == [b"one", b"two"]
+    # the frames are gone once encoded (keep_frames=False), their bytes went to ffmpeg
+    assert not any(p.exists() for _, p in rec.frames)
     argv, frames = runs[0]
     assert argv[-1] == str(tmp_path / "tour.mp4")
     # 2.1 s at 10 fps: the first frame held back to the start, then each until the next
@@ -80,13 +82,15 @@ def test_it_records_frames_acks_them_and_encodes_a_timed_list(tmp_path):
 
 
 def test_stop_before_start_and_twice_are_refused(tmp_path):
-    rec = CdpScreencastRecorder(FakePage(), save_as=tmp_path / "x.mp4", encoder=lambda a, f: None)
+    rec = CdpScreencastRecorder(FakePage(), save_as=tmp_path / "x.mp4", encoder=lambda a, f: None,
+                                check_ffmpeg=False)
     with pytest.raises(RecorderStateError):
         asyncio.run(rec.stop())
 
 
 def test_no_frames_is_an_error_not_an_empty_video(tmp_path):
-    rec = CdpScreencastRecorder(FakePage(), save_as=tmp_path / "x.mp4", encoder=lambda a, f: None)
+    rec = CdpScreencastRecorder(FakePage(), save_as=tmp_path / "x.mp4", encoder=lambda a, f: None,
+                                check_ffmpeg=False)
     with pytest.raises(RecorderStateError, match="has not started"):
         rec.origin
 
@@ -134,3 +138,45 @@ def test_the_encoded_video_has_the_recordings_duration(tmp_path):
         capture_output=True, text=True, check=True,
     ).stdout
     assert abs(float(dur) - 3.0) < 0.05
+
+
+def test_a_frame_without_a_timestamp_takes_its_arrival_time_and_is_still_acked(tmp_path):
+    page = FakePage()
+    ticks = iter([5.0, 5.4, 6.0])  # started, the frame arrived, stopped
+    rec = CdpScreencastRecorder(
+        page, save_as=tmp_path / "t.mp4", encoder=lambda a, f: list(f),
+        clock=lambda: next(ticks), check_ffmpeg=False, keep_frames=True,
+    )
+
+    async def go():
+        await rec.start()
+        page.context.cdp.frame(None, b"x")
+        await asyncio.sleep(0)
+        await rec.stop()
+
+    asyncio.run(go())
+    assert rec.frames[0][0] == 5.4 and rec.frames[0][1].read_bytes() == b"x"
+    assert any(m == "Page.screencastFrameAck" for m, _ in page.context.cdp.sent)
+
+
+def test_it_only_ever_deletes_its_own_frames(tmp_path):
+    shared = tmp_path / "posters"
+    shared.mkdir()
+    (shared / "poster.jpg").write_bytes(b"keep me")
+    (shared / "000001.jpg").write_bytes(b"an old frame")
+    rec = CdpScreencastRecorder(
+        FakePage(), save_as=tmp_path / "t.mp4", frames_dir=shared,
+        encoder=lambda a, f: None, check_ffmpeg=False,
+    )
+    asyncio.run(rec.start())
+    assert sorted(p.name for p in shared.iterdir()) == ["poster.jpg"]
+
+
+def test_no_ffmpeg_fails_at_start_not_after_the_take(tmp_path, monkeypatch):
+    import walkthru.adapters.gif.render_target as rt
+    from walkthru.adapters.gif import FfmpegMissingError
+
+    monkeypatch.setattr(rt.shutil, "which", lambda name: None)
+    rec = CdpScreencastRecorder(FakePage(), save_as=tmp_path / "t.mp4")
+    with pytest.raises(FfmpegMissingError):
+        asyncio.run(rec.start())
