@@ -138,6 +138,13 @@ def test_the_encoded_video_has_the_recordings_duration(tmp_path):
         capture_output=True, text=True, check=True,
     ).stdout
     assert abs(float(dur) - 3.0) < 0.05
+    # JPEG in, but TV-range yuv420p out: what every player and uploader expects
+    fmt = subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+         "stream=pix_fmt,color_range", "-of", "csv=p=0", str(out)],
+        capture_output=True, text=True, check=True,
+    ).stdout.strip()
+    assert fmt == "yuv420p,tv"
 
 
 def test_a_frame_without_a_timestamp_takes_its_arrival_time_and_is_still_acked(tmp_path):

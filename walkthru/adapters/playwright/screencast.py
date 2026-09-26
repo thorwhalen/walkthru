@@ -122,7 +122,9 @@ def encode_argv(
     return [
         ffmpeg, "-v", "error", "-y",
         "-f", "image2pipe", "-framerate", str(fps), "-c:v", "mjpeg", "-i", "-",
-        "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p",
+        # JPEG frames are full-range (yuvj420p); players expect TV range, and a
+        # full-range flag is mis-shown or refused by Safari/iOS and uploaders
+        "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2:out_range=tv,format=yuv420p",
         "-c:v", "libx264", "-preset", "medium", "-crf", str(crf), "-r", str(fps),
         "-movflags", "+faststart", str(out_path),
     ]  # fmt: skip
